@@ -100,7 +100,7 @@ export function Hero({ onStartTrial }: HeroProps) {
   }, [currentVideoIndex, isMobile]);
 
   return (
-    <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
+    <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20" aria-labelledby="hero-heading" role="banner">
       {/* User Profile - Top Right Corner */}
       {isLoggedIn && user && (
         <div className="absolute top-6 right-6 z-50 flex items-center gap-3 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
@@ -150,13 +150,13 @@ export function Hero({ onStartTrial }: HeroProps) {
         <div className="mb-2 animate-fade-in">
           <img
             src={logo}
-            alt="RealTV"
+            alt="RealTV - Premium Live TV Streaming Service"
             className="mx-auto h-32 w-auto md:h-44 lg:h-52"
           />
         </div>
 
         {/* Heading */}
-        <h1 className="mb-6 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl animate-fade-in" style={{ animationDelay: "0.2s" }}>
+        <h1 id="hero-heading" className="mb-6 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl animate-fade-in" style={{ animationDelay: "0.2s" }}>
           Unlimited Live TV,{" "}
           <span className="gradient-text">Movies & Series</span>
         </h1>

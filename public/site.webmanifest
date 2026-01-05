@@ -1,0 +1,27 @@
+{
+  "name": "RealTV - Live TV, Movies & Series Streaming",
+  "short_name": "RealTV",
+  "description": "Stream 1000+ live TV channels, movies, and series in HD quality. No contract, cancel anytime.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/realTV.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/realTV.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "video"],
+  "lang": "en",
+  "dir": "ltr"
+}

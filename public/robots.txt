@@ -1,8 +1,13 @@
+# RealTV Robots.txt
+# https://real-tv.vercel.app
+
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +17,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://real-tv.vercel.app/sitemap.xml

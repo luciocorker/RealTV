@@ -26,11 +26,11 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="relative py-20 px-4">
+    <section id="features" className="relative py-20 px-4" aria-labelledby="features-heading">
       <div className="mx-auto max-w-6xl">
         {/* Section header */}
         <div className="mb-12 text-center">
-          <h2 className="mb-4 font-display text-3xl font-bold text-foreground md:text-4xl">
+          <h2 id="features-heading" className="mb-4 font-display text-3xl font-bold text-foreground md:text-4xl">
             Everything You Need to{" "}
             <span className="gradient-text">Stream</span>
           </h2>

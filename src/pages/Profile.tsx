@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { User, Mail, Calendar, Tv, LogOut, ArrowLeft, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/realtv-logo.png";
+import { SEOHead } from "@/components/SEOHead";
 
 const Profile = () => {
   const { user, logout, isLoggedIn } = useUser();
@@ -12,6 +13,11 @@ const Profile = () => {
   if (!isLoggedIn || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <SEOHead 
+          title="Profile - RealTV" 
+          description="View and manage your RealTV account profile and subscription."
+          canonical="https://real-tv.vercel.app/profile"
+        />
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Not Logged In</h1>
           <p className="text-muted-foreground mb-6">Please log in to view your profile.</p>
