@@ -13,6 +13,7 @@ export function Hero({ onStartTrial }: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const { user, logout, isLoggedIn } = useUser();
   const navigate = useNavigate();
 
@@ -32,16 +33,30 @@ export function Hero({ onStartTrial }: HeroProps) {
     "GXecSGmQDEI"
   ];
 
-  // Cycle through videos every 15 seconds
+  // Detect mobile on mount
   useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Cycle through videos every 15 seconds (only on desktop)
+  useEffect(() => {
+    if (isMobile) return;
+    
     const interval = setInterval(() => {
       setCurrentVideoIndex((prev) => (prev + 1) % videos.length);
     }, 20000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
+    if (isMobile) return;
+    
     // Unmute after a short delay once video starts playing
     const unmuteTimer = setTimeout(() => {
       if (iframeRef.current) {
@@ -82,7 +97,7 @@ export function Hero({ onStartTrial }: HeroProps) {
         observer.unobserve(sectionRef.current);
       }
     };
-  }, [currentVideoIndex]);
+  }, [currentVideoIndex, isMobile]);
 
   return (
     <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
@@ -108,19 +123,21 @@ export function Hero({ onStartTrial }: HeroProps) {
         </div>
       )}
 
-      {/* YouTube Video Background */}
-      <div className="absolute inset-0">
-        <iframe
-          ref={iframeRef}
-          key={currentVideoIndex}
-          className="absolute top-1/2 left-1/2 w-[100vw] h-[100vh] min-w-[177.77vh] min-h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-          src={`https://www.youtube.com/embed/${videos[currentVideoIndex]}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&start=0`}
-          title="Background Video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ border: 'none', pointerEvents: 'none' }}
-        />
-      </div>
+      {/* YouTube Video Background - Desktop Only */}
+      {!isMobile && (
+        <div className="absolute inset-0">
+          <iframe
+            ref={iframeRef}
+            key={currentVideoIndex}
+            className="absolute top-1/2 left-1/2 w-[100vw] h-[100vh] min-w-[177.77vh] min-h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
+            src={`https://www.youtube.com/embed/${videos[currentVideoIndex]}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&start=0`}
+            title="Background Video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ border: 'none', pointerEvents: 'none' }}
+          />
+        </div>
+      )}
       
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-black/60 pointer-events-none" />
