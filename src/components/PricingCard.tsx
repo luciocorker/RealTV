@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,9 @@ interface PricingCardProps {
   className?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
+  requiresLogin?: boolean;
+  isLoggedIn?: boolean;
+  onLoginRequired?: () => void;
 }
 
 export function PricingCard({
@@ -26,11 +29,22 @@ export function PricingCard({
   className,
   style,
   onClick,
+  requiresLogin,
+  isLoggedIn,
+  onLoginRequired,
 }: PricingCardProps) {
   const handleClick = (e: React.MouseEvent) => {
     if (onClick) {
       e.preventDefault();
       onClick();
+      return;
+    }
+    
+    // Check if login is required for paid plans
+    if (requiresLogin && !isLoggedIn) {
+      e.preventDefault();
+      onLoginRequired?.();
+      return;
     }
   };
 
@@ -75,18 +89,23 @@ export function PricingCard({
       </ul>
 
       <Button
-        asChild={!onClick}
+        asChild={!onClick && (!requiresLogin || isLoggedIn)}
         variant={popular ? "default" : "outline"}
         className={cn(
-          "w-full font-semibold",
+          "w-full font-semibold relative z-10",
           popular && "bg-primary text-primary-foreground hover:bg-primary/90"
         )}
-        onClick={onClick ? handleClick : undefined}
+        onClick={handleClick}
       >
         {onClick ? (
           "Choose Plan"
+        ) : requiresLogin && !isLoggedIn ? (
+          <span className="flex items-center gap-2 cursor-pointer">
+            <Lock className="h-4 w-4" />
+            Login to Purchase
+          </span>
         ) : (
-          <a href={href} target="_blank" rel="noopener noreferrer">
+          <a href={href} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center">
             Choose Plan
           </a>
         )}

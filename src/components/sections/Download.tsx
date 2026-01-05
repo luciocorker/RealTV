@@ -2,6 +2,7 @@ import { Download, Smartphone, Tv, Monitor, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import apkFile from "@/assets/RealTV1.apk";
 
 export function DownloadSection() {
   const [copied, setCopied] = useState(false);
@@ -30,6 +31,10 @@ export function DownloadSection() {
           <p className="text-muted-foreground md:text-lg">
             Download our app and start streaming instantly
           </p>
+          <p className="mt-2 text-sm text-muted-foreground/80">
+            <Tv className="inline h-4 w-4 mr-1" />
+            Available exclusively for TVs and TV boxes (Android TV, Firestick, Smart TVs)
+          </p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
@@ -45,7 +50,7 @@ export function DownloadSection() {
               Download directly to your Android device
             </p>
             <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <a href="https://www.mediafire.com/file/example/RealTV.apk" target="_blank" rel="noopener noreferrer">
+              <a href={apkFile} download="RealTV1.apk">
                 <Download className="mr-2 h-4 w-4" />
                 Download APK
               </a>
@@ -88,11 +93,11 @@ export function DownloadSection() {
 
         {/* Supported devices */}
         <div className="mt-12 text-center">
-          <p className="mb-4 text-sm text-muted-foreground">Supported Devices</p>
+          <p className="mb-4 text-sm text-muted-foreground">Supported Devices (TV & TV Boxes Only)</p>
           <div className="flex flex-wrap items-center justify-center gap-6">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Smartphone className="h-5 w-5" />
-              <span className="text-sm">Android</span>
+              <Tv className="h-5 w-5" />
+              <span className="text-sm">Android TV</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Tv className="h-5 w-5" />

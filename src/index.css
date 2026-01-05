@@ -91,6 +91,7 @@
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
+    pointer-events: none;
   }
 
   .glow {
@@ -128,5 +129,47 @@
   @keyframes pulse-glow {
     0%, 100% { box-shadow: 0 0 20px hsl(var(--cyan) / 0.3); }
     50% { box-shadow: 0 0 40px hsl(var(--cyan) / 0.5); }
+  }
+
+  .animate-bg-slide {
+    animation: bg-slide 30s ease-in-out infinite;
+  }
+
+  @keyframes bg-slide {
+    0% { 
+      opacity: 0;
+      transform: scale(1);
+    }
+    5% {
+      opacity: 1;
+    }
+    16.66% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    20% {
+      opacity: 0;
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

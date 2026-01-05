@@ -11,20 +11,25 @@ import { Toaster } from "@/components/ui/toaster";
 
 const Index = () => {
   const [isTrialModalOpen, setIsTrialModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const openTrialModal = () => setIsTrialModalOpen(true);
   const closeTrialModal = () => setIsTrialModalOpen(false);
+  
+  const openLoginModal = () => setIsLoginModalOpen(true);
+  const closeLoginModal = () => setIsLoginModalOpen(false);
 
   return (
     <div className="min-h-screen bg-background">
       <Hero onStartTrial={openTrialModal} />
       <Features />
       <Channels />
-      <Pricing onStartTrial={openTrialModal} />
+      <Pricing onStartTrial={openTrialModal} onLoginRequired={openLoginModal} />
       <DownloadSection />
       <Footer />
       
       <TrialModal isOpen={isTrialModalOpen} onClose={closeTrialModal} />
+      <TrialModal isOpen={isLoginModalOpen} onClose={closeLoginModal} loginOnly />
       <WhatsAppButton phoneNumber="27123456789" message="Hi! I'm interested in RealTV subscription." />
       <Toaster />
     </div>

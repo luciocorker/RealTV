@@ -1,25 +1,28 @@
 import { PricingCard } from "@/components/PricingCard";
+import { useUser } from "@/contexts/UserContext";
 
 interface PricingProps {
   onStartTrial: () => void;
+  onLoginRequired: () => void;
 }
 
 const plans = [
   {
     title: "24-Hour Trial",
     price: "FREE",
+    amount: 0,
     features: [
       "Full access to all channels",
       "HD streaming quality",
       "All devices supported",
       "24-hour access period",
     ],
-    href: "#",
     isTrial: true,
   },
   {
     title: "Standard Monthly",
     price: "R150",
+    amount: 150,
     period: "month",
     features: [
       "1000+ live channels",
@@ -27,11 +30,11 @@ const plans = [
       "HD streaming",
       "1 device connection",
     ],
-    href: "https://pay.yoco.com/perfect-it-solutions-cc1",
   },
   {
     title: "Premium Monthly",
     price: "R250",
+    amount: 250,
     period: "month",
     features: [
       "1000+ live channels",
@@ -39,13 +42,13 @@ const plans = [
       "HD & 4K streaming",
       "3 device connections",
     ],
-    href: "https://pay.yoco.com/perfect-it-solutions-cc2",
     popular: true,
     badge: "Most Popular",
   },
   {
     title: "6-Month Plan",
     price: "R700",
+    amount: 700,
     period: "6 months",
     features: [
       "Everything in Premium",
@@ -53,11 +56,11 @@ const plans = [
       "HD & 4K streaming",
       "3 device connections",
     ],
-    href: "https://pay.yoco.com/perfect-it-solutions-cc3",
   },
   {
     title: "Yearly Plan",
     price: "R1200",
+    amount: 1200,
     period: "year",
     features: [
       "Everything in Premium",
@@ -65,12 +68,19 @@ const plans = [
       "Priority support",
       "5 device connections",
     ],
-    href: "https://pay.yoco.com/perfect-it-solutions-cc4",
     badge: "Best Value",
   },
 ];
 
-export function Pricing({ onStartTrial }: PricingProps) {
+export function Pricing({ onStartTrial, onLoginRequired }: PricingProps) {
+  const { isLoggedIn, user } = useUser();
+
+  const generatePaymentUrl = (amount: number, planTitle: string) => {
+    const email = user?.username || '';
+    const reference = planTitle.toLowerCase().replace(/\s+/g, '-');
+    return `https://pay.yoco.com/realtv?amount=${amount}&email=${encodeURIComponent(email)}&reference=${encodeURIComponent(reference)}`;
+  };
+
   return (
     <section id="pricing" className="relative py-20 px-4">
       <div className="mx-auto max-w-6xl">
@@ -94,12 +104,15 @@ export function Pricing({ onStartTrial }: PricingProps) {
               price={plan.price}
               period={plan.period}
               features={plan.features}
-              href={plan.isTrial ? "#" : plan.href}
+              href={plan.isTrial ? "#" : generatePaymentUrl(plan.amount, plan.title)}
               popular={plan.popular}
               badge={plan.badge}
               className="animate-fade-in"
               style={{ animationDelay: `${index * 100}ms` }}
               onClick={plan.isTrial ? onStartTrial : undefined}
+              requiresLogin={!plan.isTrial}
+              isLoggedIn={isLoggedIn}
+              onLoginRequired={onLoginRequired}
             />
           ))}
         </div>
