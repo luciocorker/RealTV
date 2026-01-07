@@ -21,8 +21,8 @@ const plans = [
   },
   {
     title: "Standard Monthly",
-    price: "R150",
-    amount: 150,
+    price: "R130",
+    amount: 130,
     period: "month",
     features: [
       "1000+ live channels",
