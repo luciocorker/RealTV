@@ -77,12 +77,7 @@ export async function loginUser(username: string, password: string): Promise<{ u
       return { user: null, error: 'Invalid username or password.' };
     }
 
-    // Check if trial has expired
-    const expirationDate = new Date(data.expiration_date);
-    if (expirationDate < new Date()) {
-      return { user: null, error: 'Your trial has expired. Please subscribe to continue.' };
-    }
-
+    // Allow login even if trial is expired - user needs to be logged in to purchase a subscription
     return { user: data, error: null };
   } catch (err) {
     console.error('Unexpected error:', err);
