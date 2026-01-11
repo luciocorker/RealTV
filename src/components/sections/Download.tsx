@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import apkFile from "@/assets/realtv-v1.0.0.apk";
+import mobileApkFile from "@/assets/Real-TV-mobile.apk";
 
 export function DownloadSection() {
   const [copied, setCopied] = useState(false);
@@ -33,24 +34,43 @@ export function DownloadSection() {
           </p>
           <p className="mt-2 text-sm text-muted-foreground/80">
             <Tv className="inline h-4 w-4 mr-1" />
-            Available exclusively for TVs and TV boxes (Android TV, Firestick, Smart TVs)
+            Available for TVs, TV boxes, and mobile phones
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-3">
           {/* APK Download */}
           <div className="rounded-xl bg-card p-6 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
               <Download className="h-8 w-8 text-primary" />
             </div>
             <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Android APK
+              Android TV
             </h3>
             <p className="mb-4 text-sm text-muted-foreground">
-              Download directly to your Android device
+              Download directly to your Android TV device
             </p>
             <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               <a href={apkFile} download="realtv-v1.0.0.apk">
+                <Download className="mr-2 h-4 w-4" />
+                Download APK
+              </a>
+            </Button>
+          </div>
+
+          {/* Mobile Phone Download */}
+          <div className="rounded-xl bg-card p-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+              <Smartphone className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
+              Mobile Phone
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Download for Android phones and tablets
+            </p>
+            <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <a href={mobileApkFile} download="Real-TV-mobile.apk">
                 <Download className="mr-2 h-4 w-4" />
                 Download APK
               </a>
@@ -93,7 +113,7 @@ export function DownloadSection() {
 
         {/* Supported devices */}
         <div className="mt-12 text-center">
-          <p className="mb-4 text-sm text-muted-foreground">Supported Devices (TV & TV Boxes Only)</p>
+          <p className="mb-4 text-sm text-muted-foreground">Supported Devices</p>
           <div className="flex flex-wrap items-center justify-center gap-6">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Tv className="h-5 w-5" />
@@ -106,6 +126,10 @@ export function DownloadSection() {
             <div className="flex items-center gap-2 text-muted-foreground">
               <Monitor className="h-5 w-5" />
               <span className="text-sm">Smart TV</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Smartphone className="h-5 w-5" />
+              <span className="text-sm">Mobile Phone</span>
             </div>
           </div>
         </div>
