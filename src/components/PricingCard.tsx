@@ -6,7 +6,7 @@ interface PricingCardProps {
   title: string;
   price: string;
   period?: string;
-  features: string[];
+  features: (string | React.ReactNode)[];
   badge?: string;
   popular?: boolean;
   href: string;
