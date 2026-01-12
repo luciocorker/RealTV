@@ -3,6 +3,19 @@ import App from "./App.tsx";
 import { UserProvider } from "./contexts/UserContext";
 import "./index.css";
 
+// Register service worker for better caching
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then((registration) => {
+        console.log('ServiceWorker registered:', registration);
+      })
+      .catch((error) => {
+        console.log('ServiceWorker registration failed:', error);
+      });
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <UserProvider>
     <App />

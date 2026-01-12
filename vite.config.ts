@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   assetsInclude: ["**/*.apk"],
+  publicDir: 'public',
   build: {
     rollupOptions: {
       output: {
