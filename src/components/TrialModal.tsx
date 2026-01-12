@@ -86,7 +86,7 @@ export function TrialModal({ isOpen, onClose, loginOnly = false }: TrialModalPro
 
         toast({
           title: "Account Created! 🎉",
-          description: "Your 24-hour free trial has started!",
+          description: "Your 7-day free trial has started!",
         });
         
         setIsLoading(false);
@@ -171,7 +171,7 @@ export function TrialModal({ isOpen, onClose, loginOnly = false }: TrialModalPro
                 Welcome, {name}! 🎉
               </h2>
               <p className="text-muted-foreground">
-                Your 24-hour free trial has started
+                Your 7-day free trial has started
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export function TrialModal({ isOpen, onClose, loginOnly = false }: TrialModalPro
                 <div>
                   <p className="font-medium text-foreground">Start Watching!</p>
                   <p className="text-sm text-muted-foreground">
-                    Enjoy unlimited access to all channels for 24 hours
+                    Enjoy unlimited access to all channels for 7 days
                   </p>
                 </div>
               </div>
@@ -261,7 +261,7 @@ export function TrialModal({ isOpen, onClose, loginOnly = false }: TrialModalPro
                       ? "Create an account to continue" 
                       : "Sign in to access your account")
                   : (mode === "signup" 
-                      ? "Get 24 hours of unlimited access" 
+                      ? "Get 7 days of unlimited access" 
                       : "Login to continue watching")}
               </p>
             </div>
@@ -396,7 +396,7 @@ export function TrialModal({ isOpen, onClose, loginOnly = false }: TrialModalPro
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           {mode === "signup" 
-            ? (loginOnly ? "Already have an account? Click Login above." : "No credit card required. 24-hour free trial.")
+            ? (loginOnly ? "Already have an account? Click Login above." : "No credit card required. 7-day free trial.")
             : "Don't have an account? Click Sign Up above."}
         </p>
           </>

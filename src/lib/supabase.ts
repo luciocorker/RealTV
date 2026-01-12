@@ -20,7 +20,7 @@ export interface User {
   updated_at: string;
 }
 
-// Create a new user with 24-hour trial
+// Create a new user with 7 day trial
 export async function createTrialUser(username: string, password: string, name: string): Promise<{ user: User | null; error: string | null }> {
   try {
     // Check if username already exists
@@ -34,9 +34,9 @@ export async function createTrialUser(username: string, password: string, name: 
       return { user: null, error: 'Email already exists. Please use a different one or login.' };
     }
 
-    // Calculate expiration date (24 hours from now)
+    // Calculate expiration date (7 days from now)
     const expirationDate = new Date();
-    expirationDate.setHours(expirationDate.getHours() + 24);
+    expirationDate.setDate(expirationDate.getDate() + 7);
 
     // Create the user
     const { data, error } = await supabase

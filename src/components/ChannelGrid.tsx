@@ -53,9 +53,12 @@ export function ChannelGrid() {
           >
             <img
               src={channel.logo}
-              alt={channel.name}
+              alt={`${channel.name} TV Channel Logo`}
               className="h-12 max-w-full object-contain"
+              width="96"
+              height="48"
               loading="lazy"
+              decoding="async"
             />
           </div>
         ))}

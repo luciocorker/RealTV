@@ -66,7 +66,7 @@ const Profile = () => {
       <header className="bg-black/50 backdrop-blur-sm border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <img src={logo} alt="RealTV" className="h-10 w-auto" />
+            <img src={logo} alt="RealTV" className="h-10 w-auto" width="100" height="40" />
           </a>
           <Button onClick={() => navigate("/")} variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />

@@ -13,7 +13,7 @@ interface SEOHeadProps {
  */
 export function SEOHead({ 
   title = "RealTV - Unlimited Live TV, Movies & Series Streaming", 
-  description = "Stream 1000+ live TV channels, movies, and series in HD quality. Start your FREE 24-hour trial today.",
+  description = "Stream 1000+ live TV channels, movies, and series in HD quality. Start your FREE 7-day trial today.",
   canonical,
   noIndex = false
 }: SEOHeadProps) {

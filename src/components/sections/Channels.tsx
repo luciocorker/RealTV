@@ -60,7 +60,10 @@ export function Channels() {
                     src={provider.logo}
                     alt={provider.name}
                     className="h-8 max-w-full object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                    width="120"
+                    height="32"
                     loading="lazy"
+                    decoding="async"
                   />
                 </div>
               ))}

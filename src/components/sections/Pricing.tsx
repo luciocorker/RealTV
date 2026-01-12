@@ -8,14 +8,14 @@ interface PricingProps {
 
 const plans = [
   {
-    title: "24-Hour Trial",
+    title: "7-Day Trial",
     price: "FREE",
     amount: 0,
     features: [
       "Full access to all channels",
       "HD streaming quality",
       "All devices supported",
-      "24-hour access period",
+      "7-day access period",
     ],
     isTrial: true,
   },
@@ -43,7 +43,7 @@ const plans = [
       "2 device connections",
     ],
     popular: true,
-    badge: "Most Popular",
+    badge: "Popular",
   },
   {
     title: "6-Month Plan",

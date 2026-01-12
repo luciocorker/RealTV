@@ -1,9 +1,10 @@
-import { Play, Tv, Sparkles, User, LogOut } from "lucide-react";
+import { Play, Tv, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/realtv-logo.png";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useNavigate } from "react-router-dom";
+import { YouTubeFacade } from "@/components/YouTubeFacade";
 
 interface HeroProps {
   onStartTrial: () => void;
@@ -11,9 +12,9 @@ interface HeroProps {
 
 export function Hero({ onStartTrial }: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [loadVideo, setLoadVideo] = useState(false);
   const { user, logout, isLoggedIn } = useUser();
   const navigate = useNavigate();
 
@@ -43,61 +44,29 @@ export function Hero({ onStartTrial }: HeroProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Cycle through videos every 15 seconds (only on desktop)
+  // Lazy load video after component mounts (defer YouTube JS)
   useEffect(() => {
     if (isMobile) return;
+    
+    // Delay loading video by 1 second to prioritize critical content
+    const timer = setTimeout(() => {
+      setLoadVideo(true);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [isMobile]);
+
+  // Cycle through videos every 15 seconds (only on desktop)
+  // Cycle through videos every 20 seconds (only on desktop)
+  useEffect(() => {
+    if (isMobile || !loadVideo) return;
     
     const interval = setInterval(() => {
       setCurrentVideoIndex((prev) => (prev + 1) % videos.length);
     }, 20000);
 
     return () => clearInterval(interval);
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (isMobile) return;
-    
-    // Unmute after a short delay once video starts playing
-    const unmuteTimer = setTimeout(() => {
-      if (iframeRef.current) {
-        iframeRef.current.contentWindow?.postMessage(
-          JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
-          '*'
-        );
-      }
-    }, 1500);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (iframeRef.current) {
-            // Calculate volume based on visibility (0-100)
-            const volume = Math.round(entry.intersectionRatio * 100);
-            
-            // Set volume using YouTube IFrame API
-            iframeRef.current.contentWindow?.postMessage(
-              JSON.stringify({ event: 'command', func: 'setVolume', args: [volume] }),
-              '*'
-            );
-          }
-        });
-      },
-      { 
-        threshold: Array.from({ length: 101 }, (_, i) => i / 100) // Track every 1% change
-      }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => {
-      clearTimeout(unmuteTimer);
-      if (sectionRef.current) {
-        observer.unobserve(sectionRef.current);
-      }
-    };
-  }, [currentVideoIndex, isMobile]);
+  }, [isMobile, loadVideo]);
 
   return (
     <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20" aria-labelledby="hero-heading" role="banner">
@@ -124,19 +93,13 @@ export function Hero({ onStartTrial }: HeroProps) {
       )}
 
       {/* YouTube Video Background - Desktop Only */}
-      {!isMobile && (
-        <div className="absolute inset-0">
-          <iframe
-            ref={iframeRef}
-            key={currentVideoIndex}
-            className="absolute top-1/2 left-1/2 w-[100vw] h-[100vh] min-w-[177.77vh] min-h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-            src={`https://www.youtube.com/embed/${videos[currentVideoIndex]}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&start=0`}
-            title="Background Video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ border: 'none', pointerEvents: 'none' }}
-          />
-        </div>
+      {!isMobile && loadVideo && (
+        <YouTubeFacade
+          videoId={videos[currentVideoIndex]}
+          autoplay={true}
+          mute={true}
+          enablejsapi={true}
+        />
       )}
       
       {/* Dark overlay for readability */}
@@ -152,6 +115,10 @@ export function Hero({ onStartTrial }: HeroProps) {
             src={logo}
             alt="RealTV - Premium Live TV Streaming Service"
             className="mx-auto h-32 w-auto md:h-44 lg:h-52"
+            width="400"
+            height="160"
+            loading="eager"
+            fetchpriority="high"
           />
         </div>
 
@@ -174,7 +141,7 @@ export function Hero({ onStartTrial }: HeroProps) {
             className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 glow-sm"
           >
             <Play className="mr-2 h-5 w-5" />
-            24-Hour FREE Trial
+            7-Day FREE Trial
           </Button>
           <Button
             size="lg"

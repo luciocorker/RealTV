@@ -7,7 +7,7 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src={logo} alt="RealTV - Live TV Streaming Service" className="h-10 w-auto" />
+            <img src={logo} alt="RealTV - Live TV Streaming Service" className="h-10 w-auto" width="100" height="40" />
           </div>
 
           {/* Links */}
