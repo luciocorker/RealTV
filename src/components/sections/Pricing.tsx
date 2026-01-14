@@ -1,10 +1,4 @@
 import { PricingCard } from "@/components/PricingCard";
-import { useUser } from "@/contexts/UserContext";
-
-interface PricingProps {
-  onStartTrial: () => void;
-  onLoginRequired: () => void;
-}
 
 const plans = [
   {
@@ -72,13 +66,10 @@ const plans = [
   },
 ];
 
-export function Pricing({ onStartTrial, onLoginRequired }: PricingProps) {
-  const { isLoggedIn, user } = useUser();
-
+export function Pricing() {
   const generatePaymentUrl = (amount: number, planTitle: string) => {
-    const email = user?.username || '';
-    const reference = planTitle.toLowerCase().replace(/\s+/g, '-');
-    return `https://pay.yoco.com/realtv?amount=${amount}&email=${encodeURIComponent(email)}&reference=${encodeURIComponent(reference)}`;
+    const reference = planTitle.toLowerCase().replace(/\\s+/g, '-');
+    return `https://pay.yoco.com/realtv?amount=${amount}&reference=${encodeURIComponent(reference)}`;
   };
 
   return (
@@ -104,18 +95,20 @@ export function Pricing({ onStartTrial, onLoginRequired }: PricingProps) {
               price={plan.price}
               period={plan.period}
               features={plan.features}
-              href={plan.isTrial ? "#" : generatePaymentUrl(plan.amount, plan.title)}
+              href={plan.isTrial ? "#download" : generatePaymentUrl(plan.amount, plan.title)}
               popular={plan.popular}
               badge={plan.badge}
               className="animate-fade-in"
               style={{ animationDelay: `${index * 100}ms` }}
-              onClick={plan.isTrial ? onStartTrial : undefined}
-              requiresLogin={!plan.isTrial}
-              isLoggedIn={isLoggedIn}
-              onLoginRequired={onLoginRequired}
+              isTrial={plan.isTrial}
             />
           ))}
         </div>
+        
+        {/* Sign up notice */}
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Download the app to create your account and start your free trial
+        </p>
       </div>
     </section>
   );

@@ -1,73 +1,135 @@
-# Welcome to your Lovable project
+# 📺 RealTV
 
-## Project info
+> **Premium Live TV Streaming Service** — Stream unlimited live TV, movies, and series on any device.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+![RealTV Banner](https://img.shields.io/badge/RealTV-Premium%20Streaming-00D4FF?style=for-the-badge&logo=tv&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## ✨ Features
 
-**Use Lovable**
+- 🎬 **1000+ Live Channels** — Sports, news, entertainment, and more
+- 🎥 **Movies & Series Library** — Extensive on-demand content
+- 📱 **Multi-Device Support** — Watch on TV, mobile, and tablets
+- 🎯 **HD & 4K Streaming** — Crystal clear picture quality
+- 🚀 **Instant Access** — Download the app and start streaming immediately
+- 💳 **Flexible Pricing** — Plans starting from R130/month
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tech Stack
 
-**Use your preferred IDE**
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI Framework |
+| **TypeScript** | Type Safety |
+| **Vite** | Build Tool |
+| **Tailwind CSS** | Styling |
+| **shadcn/ui** | Component Library |
+| **React Router** | Navigation |
+| **React Query** | Data Fetching |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🚀 Getting Started
 
-Follow these steps:
+### Prerequisites
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Node.js 18+ or Bun
+- Package manager (npm, yarn, pnpm, or bun)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Installation
 
-# Step 3: Install the necessary dependencies.
-npm i
+```bash
+# Clone the repository
+git clone https://github.com/luciocorker/RealTV.git
+cd RealTV
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Install dependencies
+bun install
+# or
+npm install
+
+# Start development server
+bun dev
+# or
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+```bash
+bun run build
+# or
+npm run build
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## 📁 Project Structure
 
-This project is built with:
+```
+src/
+├── assets/          # Static assets (images, APKs)
+├── components/      # Reusable UI components
+│   ├── sections/    # Page sections (Hero, Pricing, etc.)
+│   └── ui/          # shadcn/ui components
+├── hooks/           # Custom React hooks
+├── lib/             # Utility functions
+└── pages/           # Page components
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## 📲 Download the App
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+| Platform | Download |
+|----------|----------|
+| **Android TV** | Direct APK download |
+| **Mobile Phone** | Android APK |
+| **Firestick / Smart TV** | Downloader app code: `3265486` |
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## 💰 Pricing Plans
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+| Plan | Price | Features |
+|------|-------|----------|
+| **7-Day Trial** | FREE | Full access to all channels |
+| **Standard** | R130/month | 1 TV + 1 Mobile |
+| **Premium** | R250/month | 2 TVs + 2 Mobiles, 4K |
+| **6-Month** | R700 | Save R800 |
+| **Yearly** | R1300 | Save R1800, Priority Support |
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+## 🌐 Deployment
+
+This project is configured for deployment on **Vercel**. Simply connect your GitHub repository and deploy.
+
+```bash
+# Preview production build locally
+bun run preview
+```
+
+---
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+---
+
+<div align="center">
+
+**Made with ❤️ for entertainment lovers**
+
+[Website](https://real-tv.vercel.app) • [Contact via WhatsApp](https://wa.me/27123456789)
+
+</div>

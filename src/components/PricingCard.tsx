@@ -1,4 +1,4 @@
-import { Check, Lock } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +12,7 @@ interface PricingCardProps {
   href: string;
   className?: string;
   style?: React.CSSProperties;
-  onClick?: () => void;
-  requiresLogin?: boolean;
-  isLoggedIn?: boolean;
-  onLoginRequired?: () => void;
+  isTrial?: boolean;
 }
 
 export function PricingCard({
@@ -28,26 +25,8 @@ export function PricingCard({
   href,
   className,
   style,
-  onClick,
-  requiresLogin,
-  isLoggedIn,
-  onLoginRequired,
+  isTrial,
 }: PricingCardProps) {
-  const handleClick = (e: React.MouseEvent) => {
-    if (onClick) {
-      e.preventDefault();
-      onClick();
-      return;
-    }
-    
-    // Check if login is required for paid plans
-    if (requiresLogin && !isLoggedIn) {
-      e.preventDefault();
-      onLoginRequired?.();
-      return;
-    }
-  };
-
   return (
     <div
       className={cn(
@@ -89,26 +68,23 @@ export function PricingCard({
       </ul>
 
       <Button
-        asChild={!onClick && (!requiresLogin || isLoggedIn)}
+        asChild
         variant={popular ? "default" : "outline"}
         className={cn(
           "w-full font-semibold relative z-10",
           popular && "bg-primary text-primary-foreground hover:bg-primary/90"
         )}
-        onClick={handleClick}
       >
-        {onClick ? (
-          "Choose Plan"
-        ) : requiresLogin && !isLoggedIn ? (
-          <span className="flex items-center gap-2 cursor-pointer">
-            <Lock className="h-4 w-4" />
-            Login to Purchase
-          </span>
-        ) : (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center">
-            Choose Plan
-          </a>
-        )}
+        <a href={href} className="w-full h-full flex items-center justify-center">
+          {isTrial ? (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Download App
+            </>
+          ) : (
+            "Choose Plan"
+          )}
+        </a>
       </Button>
     </div>
   );

@@ -23,7 +23,6 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-slot'],
-          'supabase': ['@supabase/supabase-js'],
         },
       },
     },
