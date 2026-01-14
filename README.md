@@ -91,9 +91,11 @@ src/
 
 | Platform | Download |
 |----------|----------|
-| **Android TV** | Direct APK download |
-| **Mobile Phone** | Android APK |
-| **Firestick / Smart TV** | Downloader app code: `3265486` |
+| **Android TV** | [Download APK](https://real-tv.vercel.app/#download) |
+| **Mobile Phone** | [Download APK](https://real-tv.vercel.app/#download) |
+| **Firestick / Smart TV** | Use Downloader app with code: `3265486` |
+
+> 💡 Visit [real-tv.vercel.app](https://real-tv.vercel.app/#download) to download the app directly.
 
 ---
 
