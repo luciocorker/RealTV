@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import apkFile from "@/assets/realtv-v1.apk";
-import mobileApkFile from "@/assets/Real-TV-mobile.apk";
 
 export function DownloadSection() {
   const [copied, setCopied] = useState(false);
@@ -59,9 +58,9 @@ export function DownloadSection() {
           </div>
 
           {/* Mobile Phone Download */}
-          <div className="rounded-xl bg-card p-6 text-center">
+          <div className="rounded-xl bg-card p-6 text-center opacity-75">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-              <Smartphone className="h-8 w-8 text-primary" />
+              <Smartphone className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
               Mobile Phone
@@ -69,11 +68,9 @@ export function DownloadSection() {
             <p className="mb-4 text-sm text-muted-foreground">
               Download for Android phones and tablets
             </p>
-            <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <a href={mobileApkFile} download="Real-TV-mobile.apk">
-                <Download className="mr-2 h-4 w-4" />
-                Download APK
-              </a>
+            <Button disabled className="w-full">
+              <Smartphone className="mr-2 h-4 w-4" />
+              Coming Soon
             </Button>
           </div>
 
