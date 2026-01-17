@@ -2,18 +2,6 @@ import { PricingCard } from "@/components/PricingCard";
 
 const plans = [
   {
-    title: "7-Day Trial",
-    price: "FREE",
-    amount: 0,
-    features: [
-      "Full access to all channels",
-      "HD streaming quality",
-      "All devices supported",
-      "7-day access period",
-    ],
-    isTrial: true,
-  },
-  {
     title: "Standard Monthly",
     price: "R130",
     amount: 130,
@@ -87,7 +75,7 @@ export function Pricing() {
         </div>
 
         {/* Pricing grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 justify-center">
           {plans.map((plan, index) => (
             <PricingCard
               key={plan.title}
@@ -107,7 +95,7 @@ export function Pricing() {
         
         {/* Sign up notice */}
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          Download the app to create your account and start your free trial
+          Download the app to create your account and start streaming
         </p>
       </div>
     </section>
