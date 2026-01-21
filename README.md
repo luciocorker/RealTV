@@ -103,7 +103,7 @@ src/
 
 | Plan | Price | Features |
 |------|-------|----------|
-| **7-Day Trial** | FREE | Full access to all channels |
+| **7-Day Trial** | FREE | Full access to some channels |
 | **Standard** | R130/month | 1 TV + 1 Mobile |
 | **Premium** | R250/month | 2 TVs + 2 Mobiles, 4K |
 | **6-Month** | R700 | Save R800 |
