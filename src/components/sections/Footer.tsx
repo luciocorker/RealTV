@@ -31,6 +31,11 @@ export function Footer() {
             © {new Date().getFullYear()} RealTV. All rights reserved.
           </p>
         </div>
+
+        {/* Refund Policy Disclaimer */}
+        <p className="mt-8 text-center text-[10px] text-muted-foreground/60">
+          No refunds on subscriptions once signed in and content has been viewed.
+        </p>
       </div>
     </footer>
   );
