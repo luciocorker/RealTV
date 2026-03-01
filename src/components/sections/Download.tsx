@@ -2,7 +2,7 @@ import { Download, Smartphone, Tv, Monitor, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import apkFile from "@/assets/realtv-v1.apk";
+import apkFile from "@/assets/realtv-v2.apk";
 import mobileApkFile from "@/assets/the-real-tv.apk";
 
 export function DownloadSection() {
