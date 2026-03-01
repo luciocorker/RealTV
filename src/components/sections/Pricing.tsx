@@ -1,6 +1,7 @@
 import { PricingCard } from "@/components/PricingCard";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Zap, Monitor } from "lucide-react";
 
 const standardPlans = [
   {
@@ -65,6 +66,7 @@ const dstvPremiumPlans = [
     features: [
       "Full DStv Premium package",
       "Movies & series library",
+      "HD & 4K channels",
       "No buffering",
       <span key="devices"><span className="font-bold text-cyan-400">1 TV</span> (TV only, no mobile)</span>,
     ],
@@ -77,6 +79,7 @@ const dstvPremiumPlans = [
     features: [
       "Full DStv Premium package",
       "Movies & series library",
+      "HD & 4K channels",
       "No buffering",
       <span key="devices"><span className="font-bold text-cyan-400">2 TVs</span> (TV only, no mobile)</span>,
     ],
@@ -91,6 +94,7 @@ const dstvPremiumPlans = [
     features: [
       "Full DStv Premium package",
       "Movies & series library",
+      "HD & 4K channels",
       "No buffering",
       <span key="devices"><span className="font-bold text-cyan-400">2 TVs</span> (TV only, no mobile)</span>,
     ],
@@ -103,6 +107,7 @@ const dstvPremiumPlans = [
     features: [
       "Full DStv Premium package",
       "Movies & series library",
+      "HD & 4K channels",
       "No buffering",
       <span key="devices"><span className="font-bold text-cyan-400">2 TVs</span> (TV only, no mobile)</span>,
     ],
@@ -133,6 +138,74 @@ export function Pricing() {
           <p className="text-muted-foreground md:text-lg">
             Choose the plan that works for you
           </p>
+        </div>
+
+        {/* Account Type Comparison */}
+        <div className="mb-12 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+          {/* Standard Account Card */}
+          <div className="rounded-xl bg-card p-6 border border-border">
+            <h3 className="mb-4 font-display text-xl font-semibold text-foreground flex items-center gap-2">
+              <Monitor className="h-5 w-5 text-primary" />
+              Standard Accounts
+            </h3>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>1000+ live channels from around the world</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Movies & series library included</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>HD & 4K streaming quality</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-0.5">✓</span>
+                <span><strong className="text-foreground">Works on TV + Mobile</strong></span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Best for variety & flexibility</span>
+              </li>
+            </ul>
+            <p className="mt-4 text-xs text-muted-foreground/80">Starting from R130/month</p>
+          </div>
+
+          {/* DStv Premium Card */}
+          <div className="rounded-xl bg-card p-6 border border-primary/50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-bl-lg font-medium">
+              Premium
+            </div>
+            <h3 className="mb-4 font-display text-xl font-semibold text-foreground flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              DStv Premium Package
+            </h3>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Full DStv Premium channels (SuperSport, M-Net, etc.)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>Movies & series library included</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>HD & 4K channels available</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-0.5">✓</span>
+                <span><strong className="text-foreground">No buffering - smooth streaming</strong></span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-yellow-500 mt-0.5">!</span>
+                <span><strong className="text-foreground">TV only</strong> (no mobile support)</span>
+              </li>
+            </ul>
+            <p className="mt-4 text-xs text-muted-foreground/80">Starting from R300/month</p>
+          </div>
         </div>
 
         {/* Pricing Tabs */}
