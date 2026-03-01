@@ -8,7 +8,7 @@ import mobileApkFile from "@/assets/the-real-tv.apk";
 export function DownloadSection() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
-  const downloaderCode = "1911231";
+  const downloaderCode = "4519402";
 
   const copyCode = () => {
     navigator.clipboard.writeText(downloaderCode);
