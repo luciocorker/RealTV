@@ -6,11 +6,13 @@ import { DownloadSection } from "@/components/sections/Download";
 import { Setup } from "@/components/sections/Setup";
 import { Footer } from "@/components/sections/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { Header } from "@/components/Header";
 import { Toaster } from "@/components/ui/toaster";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <Hero />
       <Features />
       <Channels />
