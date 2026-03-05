@@ -132,6 +132,6 @@ This project is proprietary software. All rights reserved.
 
 **Made with ❤️ for entertainment lovers**
 
-[Website](https://real-tv.vercel.app) • [Contact via WhatsApp](https://wa.me/27123456789)
+[Website](https://real-tv.vercel.app) • [Contact via WhatsApp](https://wa.me/27769681973)
 
 </div>

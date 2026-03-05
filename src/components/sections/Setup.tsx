@@ -117,7 +117,7 @@ export function Setup() {
                       <div className={`mt-4 flex ${index % 2 === 0 ? "md:justify-end" : "md:justify-start"}`}>
                         <Button asChild size="lg" className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 font-semibold px-6">
                           <a 
-                            href="https://wa.me/27123456789?text=Hi!%20I%20just%20paid%20for%20RealTV.%0A%0AProof%20of%20Payment%3A%20%5BAttach%20Screenshot%5D%0AName%3A%20%0AEmail%3A%20%0AWhatsApp%20Number%3A%20"
+                            href="https://wa.me/27769681973?text=Hi!%20I%20just%20paid%20for%20RealTV.%0A%0AProof%20of%20Payment%3A%20%5BAttach%20Screenshot%5D%0AName%3A%20%0AEmail%3A%20%0AWhatsApp%20Number%3A%20"
                             target="_blank"
                             rel="noopener noreferrer"
                           >
@@ -147,7 +147,7 @@ export function Setup() {
           <p className="text-sm text-muted-foreground">
             Need help? Contact us on{" "}
             <a 
-              href="https://wa.me/27123456789" 
+              href="https://wa.me/27769681973" 
               className="text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
