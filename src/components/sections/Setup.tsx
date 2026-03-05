@@ -11,14 +11,27 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 const setupSteps = [
   {
     icon: AppWindow,
-    title: "Open Downloader App",
-    description: "Download and open the Downloader app from your device's app store",
+    title: "Open Downloader App or Chrome",
+    description: (
+      <>
+        <strong className="text-foreground">Option 1:</strong> Download and open the Downloader app from your device's app store
+        <br /><br />
+        <strong className="text-foreground">Option 2:</strong> Open Chrome browser on your Smart TV / TV Box and go to{" "}
+        <a href="http://aftv.news/6211329" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">aftv.news/6211329</a>
+      </>
+    ),
     showDownloaderLogo: true,
   },
   {
     icon: Download,
-    title: "Enter Code 4519402",
-    description: "Type in the code and press GO to download and install RealTV",
+    title: "Download RealTV",
+    description: (
+      <>
+        <strong className="text-foreground">Downloader App:</strong> Enter code <span className="text-primary font-bold">6211329</span> and press GO
+        <br /><br />
+        <strong className="text-foreground">Chrome:</strong> The download will start automatically from the link
+      </>
+    ),
   },
   {
     icon: CreditCard,
