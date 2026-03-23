@@ -1,4 +1,5 @@
 import { Tv, Download } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/realtv-logo.png";
 import { useEffect, useRef, useState } from "react";
@@ -110,10 +111,10 @@ export function Hero() {
             asChild
             className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 glow-sm"
           >
-            <a href="#download">
+            <Link to="/download">
               <Download className="mr-2 h-5 w-5" />
               Download App
-            </a>
+            </Link>
           </Button>
           <Button
             size="lg"
@@ -121,10 +122,10 @@ export function Hero() {
             asChild
             className="w-full sm:w-auto border-border hover:bg-secondary"
           >
-            <a href="#pricing">
+            <Link to="/setup">
               <Tv className="mr-2 h-5 w-5" />
-              View Plans
-            </a>
+              Get Started
+            </Link>
           </Button>
         </div>
 

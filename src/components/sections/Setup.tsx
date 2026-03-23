@@ -1,12 +1,7 @@
 import { Tv, Download, UserPlus, CreditCard, CheckCircle2, AppWindow } from "lucide-react";
 import downloaderLogo from "@/assets/downloader.webp";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
-const WhatsAppIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-  </svg>
-);
 
 const setupSteps = [
   {
@@ -34,28 +29,32 @@ const setupSteps = [
     ),
   },
   {
-    icon: CreditCard,
-    title: "Choose Your Plan",
+    icon: UserPlus,
+    title: "Create Your Account",
     description: (
       <>
-        Choose between <strong className="text-foreground">Standard Accounts</strong> or <strong className="text-foreground">DStv Premium Accounts</strong>, select a plan and complete payment. Take a screenshot for Proof of Payment
+        Open the RealTV app, tap <strong className="text-foreground">Create Account</strong> and fill in your details. You'll get a <strong className="text-primary">free 24-hour trial</strong> to explore all channels instantly — no payment required!
       </>
     ),
+    showAccountButton: true,
   },
   {
-    icon: UserPlus,
-    title: "Activate Account",
+    icon: CreditCard,
+    title: "Choose a Plan to Continue",
     description: (
       <>
-        Send us your <strong className="text-foreground">Proof of Payment, Name, Email and WhatsApp number</strong> via WhatsApp to activate your account
+        When your trial ends, visit our{" "}
+        <strong className="text-foreground">Shop</strong> to pick a plan. Choose between{" "}
+        <strong className="text-foreground">Standard</strong> or{" "}
+        <strong className="text-foreground">DStv Premium</strong> accounts, pay online, and your subscription activates automatically.
       </>
     ),
-    showWhatsAppButton: true,
+    showShopButton: true,
   },
   {
     icon: CheckCircle2,
     title: "Start Watching!",
-    description: "Log in and enjoy 1000+ channels instantly",
+    description: "Log in and enjoy 1000+ channels instantly. Your account stays active as long as your subscription is valid.",
   },
 ];
 
@@ -76,6 +75,15 @@ export function Setup() {
             <Tv className="h-4 w-4 text-primary" />
             <span className="text-sm text-muted-foreground">Android TV Setup</span>
           </div>
+        </div>
+
+        {/* TV Box notice */}
+        <div className="mb-8 rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4 text-center text-sm text-yellow-600 dark:text-yellow-400">
+          <p className="font-semibold">📺 If you have a Non-Smart TV or LG, Hisense or Samsung Smart TV?</p>
+          <p className="mt-1">You'll need a TV box to use RealTV.</p>
+          <Button asChild size="sm" className="mt-3">
+            <Link to="/shop">Buy a TV Box</Link>
+          </Button>
         </div>
 
         {/* Setup Steps */}
@@ -113,17 +121,23 @@ export function Setup() {
                         />
                       </div>
                     )}
-                    {step.showWhatsAppButton && (
+                    {step.showAccountButton && (
                       <div className={`mt-4 flex ${index % 2 === 0 ? "md:justify-end" : "md:justify-start"}`}>
-                        <Button asChild size="lg" className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 font-semibold px-6">
-                          <a 
-                            href="https://wa.me/27769681973?text=Hi!%20I%20just%20paid%20for%20RealTV.%0A%0AProof%20of%20Payment%3A%20%5BAttach%20Screenshot%5D%0AName%3A%20%0AEmail%3A%20%0AWhatsApp%20Number%3A%20"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <WhatsAppIcon className="mr-2 h-5 w-5" />
-                            Activate Now
-                          </a>
+                        <Button asChild size="lg" className="font-semibold px-6">
+                          <Link to="/account">
+                            <UserPlus className="mr-2 h-5 w-5" />
+                            Create Account
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                    {step.showShopButton && (
+                      <div className={`mt-4 flex ${index % 2 === 0 ? "md:justify-end" : "md:justify-start"}`}>
+                        <Button asChild size="lg" variant="outline" className="font-semibold px-6">
+                          <Link to="/shop">
+                            <CreditCard className="mr-2 h-5 w-5" />
+                            View Plans
+                          </Link>
                         </Button>
                       </div>
                     )}

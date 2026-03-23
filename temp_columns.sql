@@ -1,0 +1,3 @@
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS line_id INTEGER;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS line_username TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS line_password TEXT;

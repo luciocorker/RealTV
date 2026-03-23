@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import logo from "@/assets/realtv-logo.png";
 
 export function Footer() {
@@ -7,23 +8,25 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src={logo} alt="RealTV - Live TV Streaming Service" className="h-16 w-auto" width="160" height="64" />
+            <Link to="/">
+              <img src={logo} alt="RealTV - Live TV Streaming Service" className="h-16 w-auto" width="160" height="64" />
+            </Link>
           </div>
 
           {/* Links */}
           <nav className="flex flex-wrap items-center justify-center gap-6 text-sm" aria-label="Footer navigation">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
-            </a>
-            <a href="#channels" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/channels" className="text-muted-foreground hover:text-foreground transition-colors">
               Channels
-            </a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </a>
-            <a href="#download" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link to="/shop" className="text-muted-foreground hover:text-foreground transition-colors">
+              Shop
+            </Link>
+            <Link to="/download" className="text-muted-foreground hover:text-foreground transition-colors">
               Download
-            </a>
+            </Link>
           </nav>
 
           {/* Copyright */}
