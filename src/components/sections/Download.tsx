@@ -2,7 +2,7 @@ import { Download, Smartphone, Tv, Monitor, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import apkFile from "@/assets/realtv-v4.apk";
+import apkFile from "@/assets/realtv-v5.apk";
 import mobileApkFile from "@/assets/the-real-tv.apk";
 
 export function DownloadSection() {
@@ -51,7 +51,7 @@ export function DownloadSection() {
               Download directly to your Android TV device
             </p>
             <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <a href={apkFile} download="realtv-v4.apk">
+              <a href={apkFile} download="realtv-v5.apk">
                 <Download className="mr-2 h-4 w-4" />
                 Download APK
               </a>
