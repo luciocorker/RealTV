@@ -12,7 +12,7 @@ const setupSteps = [
         <strong className="text-foreground">Option 1:</strong> Download and open the Downloader app from your device's app store
         <br /><br />
         <strong className="text-foreground">Option 2:</strong> Open Chrome browser on your Smart TV / TV Box and go to{" "}
-        <a href="http://aftv.news/9920189" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">aftv.news/9920189</a>
+        <a href="http://aftv.news/2386885" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">aftv.news/2386885</a>
       </>
     ),
     showDownloaderLogo: true,
@@ -22,7 +22,7 @@ const setupSteps = [
     title: "Download RealTV",
     description: (
       <>
-        <strong className="text-foreground">Downloader App:</strong> Enter code <span className="text-primary font-bold">9920189</span> and press GO
+        <strong className="text-foreground">Downloader App:</strong> Enter code <span className="text-primary font-bold">2386885</span> and press GO
         <br /><br />
         <strong className="text-foreground">Chrome:</strong> The download will start automatically from the link
       </>
