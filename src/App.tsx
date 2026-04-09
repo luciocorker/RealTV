@@ -15,6 +15,7 @@ import DownloadPage from "./pages/Download";
 import SetupPage from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 import OrderSuccess from "./pages/OrderSuccess";
+import AdminPage from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/download" element={<DownloadPage />} />
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/order-success" element={<OrderSuccess />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
