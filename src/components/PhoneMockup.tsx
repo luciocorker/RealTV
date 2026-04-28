@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import phone1 from "@/assets/phone1.png";
-import phone2 from "@/assets/phone2.png";
-import phone3 from "@/assets/phone3.png";
+import phone1 from "@/assets/phone1.webp";
+import phone2 from "@/assets/phone2.webp";
+import phone3 from "@/assets/phone3.webp";
 
 const screenshots = [phone1, phone2, phone3];
 

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import tv1 from "@/assets/tv1.png";
-import tv2 from "@/assets/tv2.png";
-import tv3 from "@/assets/tv3.png";
-import tv4 from "@/assets/tv4.png";
-import tv5 from "@/assets/tv5.png";
+import tv1 from "@/assets/tv1.webp";
+import tv2 from "@/assets/tv2.webp";
+import tv3 from "@/assets/tv3.webp";
+import tv4 from "@/assets/tv4.webp";
+import tv5 from "@/assets/tv5.webp";
 
 const screenshots = [tv1, tv2, tv3, tv4, tv5];
 
