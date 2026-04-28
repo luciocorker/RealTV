@@ -42,7 +42,7 @@ interface SubscriptionUser {
   whatsapp_number: string;
   expiration_date: string;
   user_type: string;
-  line_id: number | null;
+  line_id: string | null;
   line_username: string | null;
   line_password: string | null;
   created_at: string;
@@ -300,7 +300,7 @@ export default function AdminPage() {
   const openLineEdit = (u: SubscriptionUser) => {
     setEditingLineUser(u);
     setLineForm({
-      line_id: u.line_id != null ? String(u.line_id) : "",
+      line_id: u.line_id ?? "",
       line_username: u.line_username ?? "",
       line_password: u.line_password ?? "",
     });
@@ -310,8 +310,8 @@ export default function AdminPage() {
     if (!editingLineUser) return;
     setSavingLine(true);
     try {
-      const updates: { line_id: number | null; line_username: string | null; line_password: string | null } = {
-        line_id: lineForm.line_id.trim() !== "" ? Number(lineForm.line_id) : null,
+      const updates: { line_id: string | null; line_username: string | null; line_password: string | null } = {
+        line_id: lineForm.line_id.trim() || null,
         line_username: lineForm.line_username.trim() || null,
         line_password: lineForm.line_password.trim() || null,
       };
@@ -672,7 +672,7 @@ export default function AdminPage() {
               <div className="space-y-1">
                 <Label className="text-gray-400">Line ID</Label>
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="e.g. 12345"
                   value={lineForm.line_id}
                   onChange={(e) => setLineForm((f) => ({ ...f, line_id: e.target.value }))}
