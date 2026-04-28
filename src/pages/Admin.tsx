@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2 } from "lucide-react";
+import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface SubscriptionUser {
   id: string;
@@ -35,6 +43,8 @@ interface SubscriptionUser {
   expiration_date: string;
   user_type: string;
   line_id: number | null;
+  line_username: string | null;
+  line_password: string | null;
   created_at: string;
 }
 
@@ -66,6 +76,16 @@ export default function AdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: "single"; userId: string; name: string } | { type: "selected" } | { type: "all" } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Expiry date editing
+  const [editingExpiryId, setEditingExpiryId] = useState<string | null>(null);
+  const [editingExpiryValue, setEditingExpiryValue] = useState("");
+  const [savingExpiryId, setSavingExpiryId] = useState<string | null>(null);
+
+  // Line details editing
+  const [editingLineUser, setEditingLineUser] = useState<SubscriptionUser | null>(null);
+  const [lineForm, setLineForm] = useState({ line_id: "", line_username: "", line_password: "" });
+  const [savingLine, setSavingLine] = useState(false);
+
   const isAdmin = user?.user_type === "admin";
 
   useEffect(() => {
@@ -78,7 +98,7 @@ export default function AdminPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("users")
-      .select("id, username, name, whatsapp_number, expiration_date, user_type, line_id, created_at")
+      .select("id, username, name, whatsapp_number, expiration_date, user_type, line_id, line_username, line_password, created_at")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -245,6 +265,66 @@ export default function AdminPage() {
     }
     setDeleting(false);
     setDeleteTarget(null);
+  };
+
+  const startEditExpiry = (userId: string, currentDate: string) => {
+    setEditingExpiryId(userId);
+    // Format as YYYY-MM-DD for the date input
+    const d = currentDate ? new Date(currentDate) : new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    setEditingExpiryValue(`${yyyy}-${mm}-${dd}`);
+  };
+
+  const saveExpiry = async (userId: string) => {
+    if (!editingExpiryValue) return;
+    setSavingExpiryId(userId);
+    try {
+      const isoDate = new Date(editingExpiryValue + "T00:00:00").toISOString();
+      const { error } = await supabase
+        .from("users")
+        .update({ expiration_date: isoDate, mobile_expiration_date: isoDate })
+        .eq("id", userId);
+      if (error) throw error;
+      setUsers((prev) =>
+        prev.map((u) => u.id === userId ? { ...u, expiration_date: isoDate } : u)
+      );
+      setEditingExpiryId(null);
+    } catch (err: unknown) {
+      alert("Update failed: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+    setSavingExpiryId(null);
+  };
+
+  const openLineEdit = (u: SubscriptionUser) => {
+    setEditingLineUser(u);
+    setLineForm({
+      line_id: u.line_id != null ? String(u.line_id) : "",
+      line_username: u.line_username ?? "",
+      line_password: u.line_password ?? "",
+    });
+  };
+
+  const saveLineDetails = async () => {
+    if (!editingLineUser) return;
+    setSavingLine(true);
+    try {
+      const updates: { line_id: number | null; line_username: string | null; line_password: string | null } = {
+        line_id: lineForm.line_id.trim() !== "" ? Number(lineForm.line_id) : null,
+        line_username: lineForm.line_username.trim() || null,
+        line_password: lineForm.line_password.trim() || null,
+      };
+      const { error } = await supabase.from("users").update(updates).eq("id", editingLineUser.id);
+      if (error) throw error;
+      setUsers((prev) =>
+        prev.map((u) => u.id === editingLineUser.id ? { ...u, ...updates } : u)
+      );
+      setEditingLineUser(null);
+    } catch (err: unknown) {
+      alert("Update failed: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+    setSavingLine(false);
   };
 
   const getDaysRemaining = (expirationDate: string) => {
@@ -472,9 +552,51 @@ export default function AdminPage() {
                         <TableCell className="text-gray-300">{u.whatsapp_number || "—"}</TableCell>
                         <TableCell className="text-gray-300 capitalize">{u.user_type || "—"}</TableCell>
                         <TableCell className="text-gray-300">
-                          {u.expiration_date
-                            ? new Date(u.expiration_date).toLocaleDateString("en-ZA")
-                            : "—"}
+                          {editingExpiryId === u.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={editingExpiryValue}
+                                onChange={(e) => setEditingExpiryValue(e.target.value)}
+                                className="bg-gray-800 border border-gray-600 text-white text-sm rounded px-2 py-1"
+                                autoFocus
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-400 hover:text-green-300 px-1"
+                                onClick={() => saveExpiry(u.id)}
+                                disabled={savingExpiryId === u.id}
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white px-1"
+                                onClick={() => setEditingExpiryId(null)}
+                                disabled={savingExpiryId === u.id}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 group">
+                              <span>
+                                {u.expiration_date
+                                  ? new Date(u.expiration_date).toLocaleDateString("en-ZA")
+                                  : "—"}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white px-1 h-auto py-0"
+                                onClick={() => startEditExpiry(u.id, u.expiration_date)}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -502,14 +624,25 @@ export default function AdminPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-400 hover:bg-red-900/20 px-2"
-                            onClick={() => setDeleteTarget({ type: "single", userId: u.id, name: u.name || u.username })}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-500 hover:text-blue-400 hover:bg-blue-900/20 px-2"
+                              onClick={() => openLineEdit(u)}
+                              title="Edit line details"
+                            >
+                              <Settings2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-400 hover:bg-red-900/20 px-2"
+                              onClick={() => setDeleteTarget({ type: "single", userId: u.id, name: u.name || u.username })}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -527,6 +660,64 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         )}
+        {/* Line Details Edit Dialog */}
+        <Dialog open={!!editingLineUser} onOpenChange={(open) => { if (!open && !savingLine) setEditingLineUser(null); }}>
+          <DialogContent className="bg-gray-900 border-gray-700 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white">
+                Edit Line Details — {editingLineUser?.name || editingLineUser?.username}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <Label className="text-gray-400">Line ID</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 12345"
+                  value={lineForm.line_id}
+                  onChange={(e) => setLineForm((f) => ({ ...f, line_id: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-400">Line Username</Label>
+                <Input
+                  placeholder="Username"
+                  value={lineForm.line_username}
+                  onChange={(e) => setLineForm((f) => ({ ...f, line_username: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-gray-400">Line Password</Label>
+                <Input
+                  placeholder="Password"
+                  value={lineForm.line_password}
+                  onChange={(e) => setLineForm((f) => ({ ...f, line_password: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                onClick={() => setEditingLineUser(null)}
+                disabled={savingLine}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={saveLineDetails}
+                disabled={savingLine}
+              >
+                {savingLine ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
           <AlertDialogContent className="bg-gray-900 border-gray-700">
