@@ -15,7 +15,17 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload } from "lucide-react";
+import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SubscriptionUser {
   id: string;
@@ -52,6 +62,9 @@ export default function AdminPage() {
   const [imageUploading, setImageUploading] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [msgResult, setMsgResult] = useState<{ sent: number; failed: number; skippedNoPhone: number; errorMsg?: string; errors?: string[] } | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "single"; userId: string; name: string } | { type: "selected" } | { type: "all" } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const isAdmin = user?.user_type === "admin";
 
@@ -187,6 +200,52 @@ export default function AdminPage() {
       statusFilter === "all" || getStatus(u.expiration_date) === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      let body: { userIds?: string[]; deleteAll?: boolean; adminUserId: string };
+      let deletedIds: Set<string>;
+
+      if (deleteTarget.type === "single") {
+        body = { userIds: [deleteTarget.userId], adminUserId: user.id };
+        deletedIds = new Set([deleteTarget.userId]);
+      } else if (deleteTarget.type === "selected") {
+        body = { userIds: Array.from(selectedUserIds), adminUserId: user.id };
+        deletedIds = new Set(selectedUserIds);
+      } else {
+        body = { deleteAll: true, adminUserId: user.id };
+        deletedIds = new Set(users.map((u) => u.id));
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-users`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Status ${response.status}`);
+
+      setUsers((prev) => prev.filter((u) => !deletedIds.has(u.id)));
+      setSelectedUserIds((prev) => {
+        const next = new Set(prev);
+        deletedIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } catch (err: any) {
+      alert("Delete failed: " + (err.message || "Unknown error"));
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
+  };
 
   const getDaysRemaining = (expirationDate: string) => {
     if (!expirationDate) return null;
@@ -348,6 +407,30 @@ export default function AdminPage() {
             </div>
           </CardHeader>
           <CardContent className="overflow-x-auto">
+            {!loading && filteredUsers.length > 0 && (
+              <div className="flex gap-2 mb-4">
+                {selectedUserIds.size > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-700 text-red-400 hover:bg-red-900/20"
+                    onClick={() => setDeleteTarget({ type: "selected" })}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete Selected ({selectedUserIds.size})
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-900 text-red-500 hover:bg-red-900/20"
+                  onClick={() => setDeleteTarget({ type: "all" })}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete All
+                </Button>
+              </div>
+            )}
             {loading ? (
               <p className="text-gray-400 text-center py-8">Loading users...</p>
             ) : (
@@ -368,6 +451,7 @@ export default function AdminPage() {
                     <TableHead className="text-gray-400">Expiry Date</TableHead>
                     <TableHead className="text-gray-400">Status</TableHead>
                     <TableHead className="text-gray-400">Days Left</TableHead>
+                    <TableHead className="text-gray-400 w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -417,12 +501,22 @@ export default function AdminPage() {
                             "—"
                           )}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-400 hover:bg-red-900/20 px-2"
+                            onClick={() => setDeleteTarget({ type: "single", userId: u.id, name: u.name || u.username })}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                   {filteredUsers.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -433,6 +527,36 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         )}
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
+          <AlertDialogContent className="bg-gray-900 border-gray-700">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">
+                {deleteTarget?.type === "single"
+                  ? `Delete "${deleteTarget.name}"?`
+                  : deleteTarget?.type === "selected"
+                  ? `Delete ${selectedUserIds.size} selected user${selectedUserIds.size !== 1 ? "s" : ""}?`
+                  : `Delete all ${users.length} users?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-400">
+                This action is permanent and cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700" disabled={deleting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Bulk WhatsApp Messaging */}
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
