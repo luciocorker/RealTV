@@ -7,15 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ARGON_API_BASE = "https://distributors.argontv.nl";
-const ARGON_API_KEY = "e434f9293543af772518ab99b780ffe0";
+const API_BASE = "https://tv.extremeiptv.net:8443";
+const API_KEY = "N3mCudU8IAANw2hSUyvSj5e2x3Hz0nIhffzu2";
+const API_AUTH_USER = Deno.env.get("EXTREMEIPTV_AUTH_USER")!;
 
-// Map product names (as stored in tv_box_orders) to ArgonTV package IDs
+// Map product names (as stored in tv_box_orders) to extremeiptv package IDs
 const PLAN_MAP: Record<string, { packageId: number; months: number }> = {
-  "Standard Monthly":  { packageId: 113653, months: 1 },
-  "Premium Monthly":   { packageId: 113653, months: 1 },
-  "6-Month Plan":      { packageId: 113655, months: 6 },
-  "Yearly Plan":       { packageId: 113656, months: 12 },
+  "Standard Monthly":  { packageId: 101, months: 1 },
+  "Premium Monthly":   { packageId: 101, months: 1 },
+  "6-Month Plan":      { packageId: 103, months: 6 },
+  "Yearly Plan":       { packageId: 104, months: 12 },
 };
 
 serve(async (req) => {
@@ -102,38 +103,37 @@ serve(async (req) => {
                     // No existing line — create a new one with the purchased package
                     console.log(`User ${order.email} has no line ID, creating new line`);
 
-                    const createResponse = await fetch(`${ARGON_API_BASE}/api/v1/create-line`, {
+                    const lineUsername = `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+                    const linePassword = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+
+                    const createResponse = await fetch(`${API_BASE}/ext/line/create`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
-                        "X-ApiKey": ARGON_API_KEY,
+                        "X-Api-Key": API_KEY,
+                        "X-Auth-User": API_AUTH_USER,
                       },
                       body: JSON.stringify({
+                        username: lineUsername,
+                        password: linePassword,
                         package: planInfo.packageId,
-                        template: 1271,
                       }),
                     });
 
                     const createData = await createResponse.json();
-                    console.log("ArgonTV create-line response:", createData);
+                    console.log("extremeiptv create-line response:", createData);
 
-                    if (createData.error) {
-                      console.error(`ArgonTV create-line failed for ${order.email}:`, createData);
+                    if (!createResponse.ok || createData.error) {
+                      console.error(`extremeiptv create-line failed for ${order.email}:`, createData);
                       continue;
                     }
 
-                    const newLineId = createData.id || createData.line_id || createData.lineId;
-                    const newExpiry = new Date();
-                    newExpiry.setMonth(newExpiry.getMonth() + planInfo.months);
-
                     const updateFields: Record<string, unknown> = {
-                      line_username: createData.username,
-                      line_password: createData.password,
-                      expiration_date: newExpiry.toISOString(),
+                      line_username: lineUsername,
+                      line_password: linePassword,
+                      line_id: createData.line_id,
+                      expiration_date: createData.expire_at,
                     };
-                    if (newLineId) {
-                      updateFields.line_id = newLineId;
-                    }
 
                     const { error: createUpdateError } = await supabase
                       .from("users")
@@ -143,48 +143,40 @@ serve(async (req) => {
                     if (createUpdateError) {
                       console.error(`Failed to save new line for ${order.email}:`, createUpdateError);
                     } else {
-                      console.log(`New line created for ${order.email}: new expiry=${newExpiry.toISOString()}`);
+                      console.log(`New line created for ${order.email}: expiry=${createData.expire_at}`);
                     }
                   } else {
-                    // Existing line — extend it
-                    const argonResponse = await fetch(`${ARGON_API_BASE}/api/v1/extend`, {
+                    // Existing line — renew it
+                    const renewResponse = await fetch(`${API_BASE}/ext/line/${user.line_id}/renew`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
-                        "X-ApiKey": ARGON_API_KEY,
+                        "X-Api-Key": API_KEY,
+                        "X-Auth-User": API_AUTH_USER,
                       },
                       body: JSON.stringify({
-                        lines: [user.line_id],
                         package: planInfo.packageId,
                       }),
                     });
 
-                    const argonData = await argonResponse.json();
-                    console.log("ArgonTV extend response:", argonData);
+                    const renewData = await renewResponse.json();
+                    console.log("extremeiptv renew response:", renewData);
 
-                    if (argonData.error) {
-                      console.error(`ArgonTV extend failed for ${order.email}:`, argonData);
+                    if (!renewResponse.ok || renewData.error) {
+                      console.error(`extremeiptv renew failed for ${order.email}:`, renewData);
                       continue;
                     }
 
-                    // Calculate new expiration date
-                    const currentExpiry = user.expiration_date
-                      ? new Date(user.expiration_date)
-                      : new Date();
-                    const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
-                    const newExpiry = new Date(baseDate);
-                    newExpiry.setMonth(newExpiry.getMonth() + planInfo.months);
-
-                    // Update expiration_date in users table
+                    // Update expiration_date using API's returned expire_at
                     const { error: updateError } = await supabase
                       .from("users")
-                      .update({ expiration_date: newExpiry.toISOString() })
+                      .update({ expiration_date: renewData.expire_at })
                       .eq("id", user.id);
 
                     if (updateError) {
                       console.error(`Failed to update expiration for ${order.email}:`, updateError);
                     } else {
-                      console.log(`Line extended for ${order.email}: new expiry=${newExpiry.toISOString()}`);
+                      console.log(`Line renewed for ${order.email}: expiry=${renewData.expire_at}`);
                     }
                   }
                 } catch (extendError) {

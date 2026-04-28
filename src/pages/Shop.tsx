@@ -13,7 +13,6 @@ import {
   Trash2,
   X,
   Zap,
-  Monitor,
   Package,
   Loader2,
   ChevronLeft,
@@ -79,7 +78,7 @@ const standardPlans = [
       "1000+ live channels",
       "Movies & series library",
       "HD streaming",
-      "1 TV + 1 Mobile (Android only)",
+      "1 TV + 1 Phone (Android only)",
     ],
   },
   {
@@ -89,10 +88,10 @@ const standardPlans = [
     priceLabel: "R350",
     period: "3 months",
     features: [
-      "Everything in Premium",
+      "Everything in Standard",
       "Save R40",
       "HD & 4K streaming",
-      "1 TV + 1 Mobile (Android only)",
+      "1 TV + 1 Phone (Android only)",
     ],
   },
   {
@@ -102,10 +101,10 @@ const standardPlans = [
     priceLabel: "R700",
     period: "6 months",
     features: [
-      "Everything in Premium",
+      "Everything in Standard",
       "Save R80",
       "HD & 4K streaming",
-      "1 TV + 1 Mobile (Android only)",
+      "1 TV + 1 Phone (Android only)",
     ],
   },
   {
@@ -115,76 +114,72 @@ const standardPlans = [
     priceLabel: "R1300",
     period: "year",
     features: [
-      "Everything in Premium",
-      "Save R1800",
+      "Everything in Standard",
+      "Save R260",
       "Priority support",
-      "1 TV + 1 Mobile (Android only)",
+      "1 TV + 1 Phone (Android only)",
     ],
     badge: "Best Value",
   },
 ];
 
-const dstvPremiumPlans = [
+const premiumPlans = [
   {
-    id: "dstv-monthly",
-    title: "Standard Monthly",
-    price: 300,
-    priceLabel: "R300",
-    period: "month",
-    features: [
-      "Full DStv Premium package",
-      "Movies & series library",
-      "HD & 4K channels",
-      "No buffering",
-      "1 TV (TV only, no mobile)",
-    ],
-  },
-  {
-    id: "dstv-premium-monthly",
+    id: "std-premium-monthly",
     title: "Premium Monthly",
-    price: 600,
-    priceLabel: "R600",
+    price: 230,
+    priceLabel: "R230",
     period: "month",
     features: [
-      "Full DStv Premium package",
+      "1000+ live channels",
       "Movies & series library",
-      "HD & 4K channels",
-      "No buffering",
-      "2 TVs (TV only, no mobile)",
+      "HD streaming",
+      "2 TVs + 2 Phones (Android only)",
     ],
-    popular: true,
-    badge: "Popular",
   },
   {
-    id: "dstv-6month",
+    id: "std-premium-3month",
+    title: "3-Month Plan",
+    price: 620,
+    priceLabel: "R620",
+    period: "3 months",
+    features: [
+      "Everything in Premium",
+      "Save R70",
+      "HD & 4K streaming",
+      "2 TVs + 2 Phones (Android only)",
+    ],
+  },
+  {
+    id: "std-premium-6month",
     title: "6-Month Plan",
-    price: 1750,
-    priceLabel: "R1750",
+    price: 1200,
+    priceLabel: "R1200",
     period: "6 months",
     features: [
-      "Full DStv Premium package",
-      "Movies & series library",
-      "HD & 4K channels",
-      "No buffering",
-      "2 TVs (TV only, no mobile)",
+      "Everything in Premium",
+      "Save R180",
+      "HD & 4K streaming",
+      "2 TVs + 2 Phones (Android only)",
     ],
   },
   {
-    id: "dstv-yearly",
+    id: "std-premium-yearly",
     title: "Yearly Plan",
-    price: 3400,
-    priceLabel: "R3400",
+    price: 2200,
+    priceLabel: "R2200",
     period: "year",
     features: [
-      "Full DStv Premium package",
-      "Movies & series library",
-      "HD & 4K channels",
-      "No buffering",
-      "2 TVs (TV only, no mobile)",
+      "Everything in Premium",
+      "Save R560",
+      "Priority support",
+      "2 TVs + 2 Phones (Android only)",
     ],
     badge: "Best Value",
   },
 ];
+
+
 
 const tvBoxes = [
   {
@@ -889,7 +884,7 @@ function CartCheckoutModal({
 
 export default function Shop() {
   const [activeCategory, setActiveCategory] = useState<"subscriptions" | "tvboxes">("subscriptions");
-  const [activeTab, setActiveTab] = useState<"standard" | "dstv">("standard");
+  const [activeTab, setActiveTab] = useState<"standard" | "premium">("standard");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedBox, setSelectedBox] = useState<(typeof tvBoxes)[0] | null>(null);
   const { addItem, items } = useCart();
@@ -897,7 +892,7 @@ export default function Shop() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const plans = activeTab === "standard" ? standardPlans : dstvPremiumPlans;
+  const plans = activeTab === "standard" ? standardPlans : premiumPlans;
 
   const handleAddPlan = (plan: (typeof standardPlans)[0]) => {
     if (!user) {
@@ -912,7 +907,7 @@ export default function Shop() {
     // Remove any existing subscription before adding new one
     addItem({
       id: plan.id,
-      name: `${activeTab === "dstv" ? "DStv " : ""}${plan.title}`,
+      name: plan.title,
       price: plan.price,
       priceLabel: plan.priceLabel,
       type: "subscription",
@@ -978,58 +973,8 @@ export default function Shop() {
               <p className="text-muted-foreground">Choose the plan that works for you</p>
             </div>
 
-            {/* Account type info */}
-            <div className="mb-10 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-              <div className="rounded-xl bg-card p-6 border border-border">
-                <h3 className="mb-4 font-display text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Monitor className="h-5 w-5 text-primary" />
-                  Standard Accounts
-                </h3>
-                <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">•</span>
-                    <span>1000+ live channels from around the world</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">•</span>
-                    <span>Movies & series library included</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-500 mt-0.5">&#10003;</span>
-                    <span><strong className="text-foreground">Works on TV + Mobile</strong></span>
-                  </li>
-                </ul>
-                <p className="mt-4 text-xs text-muted-foreground/80">Starting from R130/month</p>
-              </div>
-
-              <div className="rounded-xl bg-card p-6 border border-primary/50 relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-bl-lg font-medium">
-                  Premium
-                </div>
-                <h3 className="mb-4 font-display text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary" />
-                  DStv Premium Package
-                </h3>
-                <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">•</span>
-                    <span>Full DStv Premium channels (SuperSport, M-Net, etc.)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-500 mt-0.5">&#10003;</span>
-                    <span><strong className="text-foreground">No buffering - smooth streaming</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-yellow-500 mt-0.5">!</span>
-                    <span><strong className="text-foreground">TV only</strong> (no mobile support)</span>
-                  </li>
-                </ul>
-                <p className="mt-4 text-xs text-muted-foreground/80">Starting from R300/month</p>
-              </div>
-            </div>
-
             {/* Tabs */}
-            <div className="mb-10 flex justify-center">
+            <div className="mb-6 flex justify-center">
               <div className="inline-flex rounded-lg bg-secondary p-1">
                 <button
                   onClick={() => setActiveTab("standard")}
@@ -1040,26 +985,24 @@ export default function Shop() {
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Standard Accounts
+                  1 TV &amp; 1 Phone
                 </button>
                 <button
-                  onClick={() => setActiveTab("dstv")}
+                  onClick={() => setActiveTab("premium")}
                   className={cn(
                     "rounded-md px-6 py-2.5 text-sm font-medium transition-all",
-                    activeTab === "dstv"
+                    activeTab === "premium"
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  DStv Premium Package
+                  2 TV's &amp; 2 Phone's
                 </button>
               </div>
             </div>
 
             <p className="mb-8 text-center text-sm text-muted-foreground">
-              {activeTab === "standard"
-                ? "Access to 1000+ live channels, movies & series"
-                : "Full DStv Premium package with all premium channels"}
+              Access to 1000+ live channels, movies & series
             </p>
 
             {/* Plan cards */}

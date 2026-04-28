@@ -1,25 +1,15 @@
-import { Download, Smartphone, Tv, Monitor, Copy, Check } from "lucide-react";
+import { Download, Smartphone, Tv, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import apkFile from "@/assets/realtv-v6.apk";
-import mobileApkFile from "@/assets/the-real-tv.apk";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import downloaderLogo from "@/assets/downloader.webp";
+import tvApkFile from "@/assets/realtv-tv-v3.apk";
+import mobileApkFile from "@/assets/real-mobile-v2.apk";
+const mobileApkUrl = mobileApkFile;
+const tvApkUrl = tvApkFile;
+import PhoneMockup from "@/components/PhoneMockup";
+import TVMockup from "@/components/TVMockup";
 
 export function DownloadSection() {
-  const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
-  const downloaderCode = "2521810";
-
-  const copyCode = () => {
-    navigator.clipboard.writeText(downloaderCode);
-    setCopied(true);
-    toast({
-      title: "Code copied!",
-      description: "Paste this code in the Downloader app",
-    });
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <section id="download" className="relative py-20 px-4 bg-secondary/30">
       <div className="mx-auto max-w-4xl">
@@ -38,78 +28,85 @@ export function DownloadSection() {
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-3">
-          {/* APK Download */}
-          <div className="rounded-xl bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-              <Download className="h-8 w-8 text-primary" />
+        {/* Device Tabs */}
+        <div className="mb-16 rounded-2xl bg-card border border-border overflow-hidden">
+          <Tabs defaultValue="phone" className="w-full">
+            <div className="flex justify-center pt-8 px-10">
+              <TabsList className="gap-1">
+                <TabsTrigger value="phone" className="flex items-center gap-2 px-6 py-2">
+                  <Smartphone className="h-4 w-4" />
+                  Mobile
+                </TabsTrigger>
+                <TabsTrigger value="tv" className="flex items-center gap-2 px-6 py-2">
+                  <Tv className="h-4 w-4" />
+                  TV
+                </TabsTrigger>
+              </TabsList>
             </div>
-            <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Android TV
-            </h3>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Download directly to your Android TV device
-            </p>
-            <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <a href={apkFile} download="realtv-v6.apk">
-                <Download className="mr-2 h-4 w-4" />
-                Download APK
-              </a>
-            </Button>
-          </div>
 
-          {/* Mobile Phone Download */}
-          <div className="rounded-xl bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-              <Smartphone className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Mobile Phone
-            </h3>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Download for Android phones and tablets
-            </p>
-            <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <a href={mobileApkFile} download="the-real-tv.apk">
-                <Download className="mr-2 h-4 w-4" />
-                Download APK
-              </a>
-            </Button>
-          </div>
+            {/* Mobile tab */}
+            <TabsContent value="phone">
+              <div className="flex flex-col items-center gap-8 p-10 pt-6">
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 mb-4">
+                    <Smartphone className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-primary">Mobile App</span>
+                  </div>
+                  <h3 className="mb-4 font-display text-2xl font-bold text-foreground md:text-3xl">
+                    Watch on Your Phone
+                  </h3>
+                  <p className="mb-2 text-muted-foreground">
+                    Take your favourite channels everywhere. The RealTV mobile app gives you:
+                  </p>
+                </div>
+                <PhoneMockup />
+                <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <a href={mobileApkUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="mr-2 h-5 w-5" />
+                    Download Mobile App
+                  </a>
+                </Button>
+              </div>
+            </TabsContent>
 
-          {/* Downloader App Code */}
-          <div className="rounded-xl bg-card p-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-              <Tv className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
-              Downloader App
-            </h3>
-            <p className="mb-4 text-sm text-muted-foreground">
-              For Firestick, Android TV & Smart TVs
-            </p>
-            <div className="mb-4 flex items-center justify-center gap-2">
-              <span className="rounded-lg bg-secondary px-4 py-2 font-mono text-2xl font-bold text-primary">
-                {downloaderCode}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={copyCode}
-                className="border-border"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-accent" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Enter this code in the Downloader app
-            </p>
-          </div>
+            {/* TV tab */}
+            <TabsContent value="tv">
+              <div className="flex flex-col items-center gap-8 px-4 py-6 sm:p-10 sm:pt-6">
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 mb-4">
+                    <Tv className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-medium text-primary">TV App</span>
+                  </div>
+                  <h3 className="mb-4 font-display text-2xl font-bold text-foreground md:text-3xl">
+                    Watch on Your TV
+                  </h3>
+                  <p className="mb-2 text-muted-foreground">
+                    Stream RealTV on your big screen. Compatible with Android TV, Firestick, and Smart TVs.
+                  </p>
+                </div>
+                <TVMockup />
+                <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <a href={tvApkUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="mr-2 h-5 w-5" />
+                    Download TV App
+                  </a>
+                </Button>
+                <div className="flex flex-col items-center gap-2 mt-2">
+                  <p className="text-sm text-muted-foreground">Or use the Downloader app:</p>
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card/60 px-5 py-3">
+                    <img src={downloaderLogo} alt="Downloader App" className="h-16 w-auto rounded-md" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Enter code</span>
+                      <span className="text-lg font-bold tracking-widest text-primary">4746350</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
+
+
 
         {/* Supported devices */}
         <div className="mt-12 text-center">

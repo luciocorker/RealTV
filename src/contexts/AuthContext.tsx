@@ -73,8 +73,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Username already taken" };
     }
 
+    // Check if WhatsApp number is already registered
+    const { data: existingWa } = await supabase
+      .from("users")
+      .select("id")
+      .eq("whatsapp_number", fields.whatsapp_number)
+      .maybeSingle();
+
+    if (existingWa) {
+      return { success: false, error: "This WhatsApp number is already registered to an account." };
+    }
+
+    // Verify WhatsApp number exists
+    try {
+      const waCheckRes = await fetch(
+        "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/check-whatsapp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: fields.whatsapp_number }),
+        }
+      );
+      const waCheck = await waCheckRes.json();
+      if (!waCheck.exists) {
+        return { success: false, error: "WhatsApp number not valid. Please enter a valid WhatsApp number." };
+      }
+    } catch {
+      return { success: false, error: "Could not verify WhatsApp number. Please try again." };
+    }
+
     const trialExpiry = new Date();
-    trialExpiry.setHours(trialExpiry.getHours() + 24);
+    trialExpiry.setDate(trialExpiry.getDate() + 3);
 
     const { data, error } = await supabase
       .from("users")
@@ -95,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: error?.message || "Registration failed" };
     }
 
-    // Create a 24-hour test line via ArgonTV
+    // Create a 3-day trial line via ArgonTV
     try {
       const lineResponse = await fetch(
         "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/create-line",
@@ -106,10 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
           },
-          body: JSON.stringify({ userId: data.id, packageId: "24h-test" }),
+          body: JSON.stringify({ username: fields.username, packageId: "3day-trial" }),
         }
       );
       const lineData = await lineResponse.json();
+      console.log("create-line response:", lineData);
       if (lineData.success) {
         data.line_id = lineData.line_id;
         data.line_username = lineData.line_username;
