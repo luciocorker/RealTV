@@ -486,7 +486,7 @@ export default function AdminPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent>
             {!loading && filteredUsers.length > 0 && (
               <div className="flex gap-2 mb-4">
                 {selectedUserIds.size > 0 && (
@@ -514,6 +514,108 @@ export default function AdminPage() {
             {loading ? (
               <p className="text-gray-400 text-center py-8">Loading users...</p>
             ) : (
+              <>
+                {/* Mobile card list — visible on small screens */}
+                <div className="md:hidden space-y-3">
+                  {filteredUsers.length > 0 && (
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-800">
+                      <Checkbox
+                        checked={filteredUsers.length > 0 && filteredUsers.every((u) => selectedUserIds.has(u.id))}
+                        onCheckedChange={toggleAllVisible}
+                        className="border-gray-600"
+                      />
+                      <span className="text-gray-400 text-sm">Select all ({filteredUsers.length})</span>
+                    </div>
+                  )}
+                  {filteredUsers.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">No users found</p>
+                  ) : (
+                    filteredUsers.map((u) => {
+                      const status = getStatus(u.expiration_date);
+                      const days = getDaysRemaining(u.expiration_date);
+                      return (
+                        <div
+                          key={u.id}
+                          className={`rounded-lg border p-3 space-y-2 ${
+                            selectedUserIds.has(u.id) ? "border-gray-600 bg-gray-800/60" : "border-gray-800 bg-gray-800/20"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedUserIds.has(u.id)}
+                              onCheckedChange={() => toggleUserSelection(u.id)}
+                              className="border-gray-600 shrink-0"
+                            />
+                            <span className="text-white font-medium flex-1 truncate">{u.name || "—"}</span>
+                            <Badge
+                              variant={status === "active" ? "default" : "destructive"}
+                              className={status === "active" ? "bg-green-600/20 text-green-400 hover:bg-green-600/30" : "bg-red-600/20 text-red-400 hover:bg-red-600/30"}
+                            >
+                              {status === "active" ? "Active" : "Expired"}
+                            </Badge>
+                          </div>
+                          <div className="text-gray-400 text-sm truncate pl-6">{u.username}</div>
+                          <div className="flex items-center justify-between pl-6">
+                            <span className="text-gray-400 text-sm">{u.whatsapp_number || "No phone"}</span>
+                            {days !== null && (
+                              <span className={`text-sm font-medium ${days > 7 ? "text-green-400" : days > 0 ? "text-yellow-400" : "text-red-400"}`}>
+                                {days > 0 ? `${days}d left` : `${Math.abs(days)}d ago`}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between pl-6 pt-1 border-t border-gray-800">
+                            {editingExpiryId === u.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="date"
+                                  value={editingExpiryValue}
+                                  onChange={(e) => setEditingExpiryValue(e.target.value)}
+                                  className="bg-gray-800 border border-gray-600 text-white text-sm rounded px-2 py-1"
+                                  autoFocus
+                                />
+                                <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300 px-1" onClick={() => saveExpiry(u.id)} disabled={savingExpiryId === u.id}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white px-1" onClick={() => setEditingExpiryId(null)} disabled={savingExpiryId === u.id}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                className="flex items-center gap-1 text-gray-400 text-sm hover:text-white transition-colors"
+                                onClick={() => startEditExpiry(u.id, u.expiration_date)}
+                              >
+                                {u.expiration_date ? new Date(u.expiration_date).toLocaleDateString("en-ZA") : "No expiry"}
+                                <Pencil className="w-3 h-3 ml-1" />
+                              </button>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-500 hover:text-blue-400 hover:bg-blue-900/20 px-2 h-8"
+                                onClick={() => openLineEdit(u)}
+                                title="Edit line details"
+                              >
+                                <Settings2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-500 hover:text-red-400 hover:bg-red-900/20 px-2 h-8"
+                                onClick={() => setDeleteTarget({ type: "single", userId: u.id, name: u.name || u.username })}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {/* Desktop table — hidden on small screens */}
+                <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-gray-800 hover:bg-transparent">
@@ -656,6 +758,8 @@ export default function AdminPage() {
                   )}
                 </TableBody>
               </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -866,8 +970,8 @@ export default function AdminPage() {
                 <ImagePlus className="w-4 h-4" />
                 Image <span className="text-gray-600">(optional — message becomes the caption)</span>
               </label>
-              <div className="flex gap-2 items-center">
-                <label className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-md cursor-pointer hover:bg-gray-700 transition-colors text-sm text-gray-300">
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <label className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-md cursor-pointer hover:bg-gray-700 transition-colors text-sm text-gray-300 shrink-0">
                   <Upload className="w-4 h-4" />
                   {imageUploading ? "Uploading..." : "Upload Image"}
                   <input
@@ -883,7 +987,7 @@ export default function AdminPage() {
                   placeholder="Paste image URL..."
                   value={msgImageUrl}
                   onChange={(e) => setMsgImageUrl(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white flex-1"
+                  className="bg-gray-800 border-gray-700 text-white w-full sm:flex-1"
                 />
                 {msgImageUrl && (
                   <Button

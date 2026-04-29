@@ -15,6 +15,7 @@ const API_AUTH_USER = Deno.env.get("EXTREMEIPTV_AUTH_USER")!;
 const PLAN_MAP: Record<string, { packageId: number; months: number }> = {
   "Standard Monthly":  { packageId: 101, months: 1 },
   "Premium Monthly":   { packageId: 101, months: 1 },
+  "3-Month Plan":      { packageId: 102, months: 3 },
   "6-Month Plan":      { packageId: 103, months: 6 },
   "Yearly Plan":       { packageId: 104, months: 12 },
 };
@@ -133,6 +134,7 @@ serve(async (req) => {
                       line_password: linePassword,
                       line_id: createData.line_id,
                       expiration_date: createData.expire_at,
+                      mobile_expiration_date: createData.expire_at,
                     };
 
                     const { error: createUpdateError } = await supabase
@@ -170,7 +172,7 @@ serve(async (req) => {
                     // Update expiration_date using API's returned expire_at
                     const { error: updateError } = await supabase
                       .from("users")
-                      .update({ expiration_date: renewData.expire_at })
+                      .update({ expiration_date: renewData.expire_at, mobile_expiration_date: renewData.expire_at })
                       .eq("id", user.id);
 
                     if (updateError) {
