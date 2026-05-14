@@ -16,7 +16,6 @@ import SetupPage from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 import OrderSuccess from "./pages/OrderSuccess";
 import AdminPage from "./pages/Admin";
-import { ComingSoonModal } from "./components/ComingSoonModal";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +26,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      {/* TODO: Remove ComingSoonModal once website is ready */}
-      <ComingSoonModal />
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>

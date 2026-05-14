@@ -65,6 +65,11 @@ import pepLogo from "@/assets/pep-logo.png";
 import pepHomeLogo from "@/assets/pep-home-logo.png";
 import pepCellLogo from "@/assets/pep-cell-logo.png";
 
+import { SHOW_SUBSCRIPTIONS } from "@/lib/featureFlags";
+
+// Set to true to re-enable the Add to Cart button in product details
+const SHOW_CART = false;
+
 // ─── Data ───────────────────────────────────────────────
 
 const standardPlans = [
@@ -190,8 +195,6 @@ const tvBoxes = [
     originalPrice: "R2599",
     images: [max1, max2, max3, max4],
     features: [
-      "RealTV pre-installed",
-      "Free 1 month RealTV subscription",
       "Plug & play - ready to use",
       "4K Ultra HD streaming",
       "Google TV built-in",
@@ -210,8 +213,6 @@ const tvBoxes = [
     originalPrice: "R2999",
     images: [mav2, mav1, mav3],
     features: [
-      "RealTV pre-installed",
-      "Free 1 month RealTV subscription",
       "Plug & play - ready to use",
       "Full HD & 4K support",
       "Android OS",
@@ -230,8 +231,6 @@ const tvBoxes = [
     originalPrice: "R2100",
     images: [q1, q2, q4],
     features: [
-      "RealTV pre-installed",
-      "Free 1 month RealTV subscription",
       "Plug & play - ready to use",
       "4K Ultra HD streaming",
       "Google TV built-in",
@@ -250,8 +249,6 @@ const tvBoxes = [
     originalPrice: "R2500",
     images: [cool4, cool1, cool2, cool3],
     features: [
-      "RealTV pre-installed",
-      "Free 1 month RealTV subscription",
       "Plug & play - ready to use",
       "4K Ultra HD streaming",
       "Google TV built-in",
@@ -518,23 +515,25 @@ function TVBoxDetail({
             ))}
           </ul>
 
-          <Button
-            className="w-full"
-            onClick={() => {
-              addItem({
-                id: box.id,
-                name: box.name,
-                price: box.price,
-                priceLabel: box.priceLabel,
-                type: "tvbox",
-                image: box.images[0],
-              });
-              onClose();
-            }}
-          >
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Add to Cart
-          </Button>
+          {SHOW_CART && (
+            <Button
+              className="w-full"
+              onClick={() => {
+                addItem({
+                  id: box.id,
+                  name: box.name,
+                  price: box.price,
+                  priceLabel: box.priceLabel,
+                  type: "tvbox",
+                  image: box.images[0],
+                });
+                onClose();
+              }}
+            >
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Add to Cart
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -883,7 +882,7 @@ function CartCheckoutModal({
 // ─── Shop Page ──────────────────────────────────────────
 
 export default function Shop() {
-  const [activeCategory, setActiveCategory] = useState<"subscriptions" | "tvboxes">("subscriptions");
+  const [activeCategory, setActiveCategory] = useState<"subscriptions" | "tvboxes">(SHOW_SUBSCRIPTIONS ? "subscriptions" : "tvboxes");
   const [activeTab, setActiveTab] = useState<"standard" | "premium">("standard");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedBox, setSelectedBox] = useState<(typeof tvBoxes)[0] | null>(null);
@@ -925,10 +924,13 @@ export default function Shop() {
               <span className="gradient-text">Shop</span>
             </h1>
             <p className="text-muted-foreground md:text-lg">
-              Subscriptions, TV boxes & bundles — all in one place
+              {SHOW_SUBSCRIPTIONS
+                ? "Subscriptions, TV boxes & bundles — all in one place"
+                : "Premium TV boxes for the best streaming experience"}
             </p>
 
-            {/* Category toggle */}
+            {/* Category toggle — only shown when SHOW_SUBSCRIPTIONS is true */}
+            {SHOW_SUBSCRIPTIONS && (
             <div className="mt-6 flex justify-center">
               <div className="inline-flex rounded-lg bg-secondary p-1">
                 <button
@@ -957,15 +959,14 @@ export default function Shop() {
                 </button>
               </div>
             </div>
+            )}
           </div>
-
-          {/* Floating cart button */}
           <div className="fixed bottom-24 right-6 z-40">
             <CartSheet onCheckout={() => setCheckoutOpen(true)} />
           </div>
 
           {/* ───── Subscriptions ───── */}
-          {activeCategory === "subscriptions" && <section className="mb-20">
+          {SHOW_SUBSCRIPTIONS && activeCategory === "subscriptions" && <section className="mb-20">
             <div className="mb-8 text-center">
               <h2 className="mb-2 font-display text-2xl font-bold text-foreground md:text-3xl">
                 Subscription Plans
@@ -1091,7 +1092,7 @@ export default function Shop() {
           </section>}
 
           {/* ───── TV Boxes ───── */}
-          {activeCategory === "tvboxes" && <section>
+          {(!SHOW_SUBSCRIPTIONS || activeCategory === "tvboxes") && <section>
             <div className="mb-12 text-center">
               <div className="mb-4 flex items-center justify-center gap-2">
                 <Package className="h-8 w-8 text-primary" />
@@ -1116,11 +1117,13 @@ export default function Shop() {
               <TVBoxDetail box={selectedBox} onClose={() => setSelectedBox(null)} />
             )}
 
-            <div className="mt-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                Bundle a TV box with any RealTV subscription for the ultimate streaming setup!
-              </p>
-            </div>
+            {SHOW_SUBSCRIPTIONS && (
+              <div className="mt-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Bundle a TV box with any RealTV subscription for the ultimate streaming setup!
+                </p>
+              </div>
+            )}
           </section>}
         </div>
       </div>

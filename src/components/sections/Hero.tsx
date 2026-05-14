@@ -1,6 +1,7 @@
-import { Tv, Download } from "lucide-react";
+import { Tv, Download, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { SHOW_CONTENT_PAGES } from "@/lib/featureFlags";
 import logo from "@/assets/realtv-logo.png";
 import { useEffect, useRef, useState } from "react";
 import { YouTubeFacade } from "@/components/YouTubeFacade";
@@ -95,54 +96,82 @@ export function Hero() {
 
         {/* Heading */}
         <h1 id="hero-heading" className="mb-6 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          Unlimited Live TV,{" "}
-          <span className="gradient-text">Movies & Series</span>
+          {SHOW_CONTENT_PAGES ? (
+            <>Unlimited Live TV,{" "}<span className="gradient-text">Movies & Series</span></>
+          ) : (
+            <>Premium TV Boxes for{" "}<span className="gradient-text">Ultimate Streaming</span></>
+          )}
         </h1>
 
         {/* Subheading */}
         <p className="mb-8 text-lg text-muted-foreground md:text-xl animate-fade-in" style={{ animationDelay: "0.3s" }}>
-          Stream your favorite content on any device. Sports, movies, series, and more — all in HD quality.
+          {SHOW_CONTENT_PAGES
+            ? "Stream your favorite content on any device. Sports, movies, series, and more — all in HD quality."
+            : "Get the best Android TV boxes delivered to your door. 4K streaming, pre-loaded and ready to go."}
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row animate-fade-in" style={{ animationDelay: "0.4s" }}>
+          {SHOW_CONTENT_PAGES && (
+            <Button
+              size="lg"
+              asChild
+              className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 glow-sm"
+            >
+              <Link to="/download">
+                <Download className="mr-2 h-5 w-5" />
+                Download App
+              </Link>
+            </Button>
+          )}
           <Button
             size="lg"
             asChild
             className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 glow-sm"
           >
-            <Link to="/download">
-              <Download className="mr-2 h-5 w-5" />
-              Download App
-            </Link>
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            asChild
-            className="w-full sm:w-auto border-border hover:bg-secondary"
-          >
-            <Link to="/setup">
-              <Tv className="mr-2 h-5 w-5" />
-              Get Started
+            <Link to="/shop">
+              {SHOW_CONTENT_PAGES ? (
+                <><Tv className="mr-2 h-5 w-5" />Get Started</>
+              ) : (
+                <><ShoppingCart className="mr-2 h-5 w-5" />Shop TV Boxes</>
+              )}
             </Link>
           </Button>
         </div>
 
         {/* Trust indicators */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.5s" }}>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-accent" />
-            <span>No Contract</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-primary" />
-            <span>Cancel Anytime</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-cyan" />
-            <span>Instant Access</span>
-          </div>
+          {SHOW_CONTENT_PAGES ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-accent" />
+                <span>No Contract</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary" />
+                <span>Cancel Anytime</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-cyan" />
+                <span>Instant Access</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-accent" />
+                <span>Fast Delivery</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary" />
+                <span>Secure Checkout</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-cyan" />
+                <span>Free Setup Support</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

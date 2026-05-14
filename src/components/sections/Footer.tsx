@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import logo from "@/assets/realtv-logo.png";
+import { SHOW_CONTENT_PAGES } from "@/lib/featureFlags";
 
 export function Footer() {
   return (
@@ -15,18 +16,24 @@ export function Footer() {
 
           {/* Links */}
           <nav className="flex flex-wrap items-center justify-center gap-6 text-sm" aria-label="Footer navigation">
-            <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
-              Features
-            </Link>
-            <Link to="/channels" className="text-muted-foreground hover:text-foreground transition-colors">
-              Channels
-            </Link>
+            {SHOW_CONTENT_PAGES && (
+              <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+            )}
+            {SHOW_CONTENT_PAGES && (
+              <Link to="/channels" className="text-muted-foreground hover:text-foreground transition-colors">
+                Channels
+              </Link>
+            )}
             <Link to="/shop" className="text-muted-foreground hover:text-foreground transition-colors">
               Shop
             </Link>
-            <Link to="/download" className="text-muted-foreground hover:text-foreground transition-colors">
-              Download
-            </Link>
+            {SHOW_CONTENT_PAGES && (
+              <Link to="/download" className="text-muted-foreground hover:text-foreground transition-colors">
+                Download
+              </Link>
+            )}
           </nav>
 
           {/* Copyright */}
@@ -36,9 +43,11 @@ export function Footer() {
         </div>
 
         {/* Refund Policy Disclaimer */}
-        <p className="mt-8 text-center text-[10px] text-muted-foreground/60">
-          No refunds on subscriptions once signed in and content has been viewed.
-        </p>
+        {SHOW_CONTENT_PAGES && (
+          <p className="mt-8 text-center text-[10px] text-muted-foreground/60">
+            No refunds on subscriptions once signed in and content has been viewed.
+          </p>
+        )}
       </div>
     </footer>
   );

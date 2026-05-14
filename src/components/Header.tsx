@@ -12,11 +12,16 @@ import {
 } from "@/components/ui/sheet";
 import logo from "@/assets/realtv-logo.png";
 
+import { SHOW_CONTENT_PAGES } from "@/lib/featureFlags";
+
+// Set to true to re-enable the Account button in the navbar
+const SHOW_ACCOUNT = false;
+
 const navLinks = [
-  { href: "/channels", label: "Channels" },
+  ...(SHOW_CONTENT_PAGES ? [{ href: "/channels", label: "Channels" }] : []),
   { href: "/shop", label: "Shop" },
-  { href: "/download", label: "Download" },
-  { href: "/setup", label: "Setup" },
+  ...(SHOW_CONTENT_PAGES ? [{ href: "/download", label: "Download" }] : []),
+  ...(SHOW_CONTENT_PAGES ? [{ href: "/setup", label: "Setup" }] : []),
 ];
 
 export function Header() {
@@ -73,12 +78,14 @@ export function Header() {
                     </Link>
                   </Button>
                 )}
-                <Button asChild variant="outline" className="w-full" size="lg">
-                  <Link to="/account" onClick={handleNavClick}>
-                    <User className="mr-2 h-5 w-5" />
-                    {user ? user.name : "Account"}
-                  </Link>
-                </Button>
+                {SHOW_ACCOUNT && (
+                  <Button asChild variant="outline" className="w-full" size="lg">
+                    <Link to="/account" onClick={handleNavClick}>
+                      <User className="mr-2 h-5 w-5" />
+                      {user ? user.name : "Account"}
+                    </Link>
+                  </Button>
+                )}
               </div>
             </nav>
           </SheetContent>
@@ -121,12 +128,14 @@ export function Header() {
                   </Link>
                 </Button>
               )}
-              <Button asChild variant="outline" size="sm">
-                <Link to="/account">
-                  <User className="mr-2 h-4 w-4" />
-                  {user ? user.name : "Account"}
-                </Link>
-              </Button>
+              {SHOW_ACCOUNT && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/account">
+                    <User className="mr-2 h-4 w-4" />
+                    {user ? user.name : "Account"}
+                  </Link>
+                </Button>
+              )}
             </nav>
           </div>
         </div>
