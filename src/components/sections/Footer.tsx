@@ -29,6 +29,12 @@ export function Footer() {
             <Link to="/shop" className="text-muted-foreground hover:text-foreground transition-colors">
               Shop
             </Link>
+            <Link to="/shipping-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+              Shipping Policy
+            </Link>
+            <Link to="/refund-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+              Refund Policy
+            </Link>
             {SHOW_CONTENT_PAGES && (
               <Link to="/download" className="text-muted-foreground hover:text-foreground transition-colors">
                 Download
