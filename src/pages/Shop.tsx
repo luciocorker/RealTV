@@ -624,29 +624,23 @@ function CartCheckoutModal({
         .filter((i) => i.type === "subscription" && i.id.startsWith("std-"))
         .map((i) => i.id);
 
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
       for (const item of items) {
         const isTV = item.type === "tvbox";
-        const { error } = await supabase.from("tv_box_orders").insert({
-          product_name: item.name,
-          price: item.priceLabel,
-          amount: item.price * item.quantity,
-          full_name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          address: isTV ? formData.paxiPoint : "",
-          city: "",
-          postal_code: "",
-          payment_reference: reference,
-          payment_status: "pending",
-          notified: false,
+        const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/tv_box_orders`, {
+          method: "POST",
+          headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+          body: JSON.stringify({
+            product_name: item.name, price: item.priceLabel, amount: item.price * item.quantity,
+            full_name: formData.fullName, email: formData.email, phone: formData.phone,
+            address: isTV ? formData.paxiPoint : "", city: "", postal_code: "",
+            payment_reference: reference, payment_status: "pending", notified: false,
+          }),
         });
-        if (error) {
-          console.error("Error saving order:", error);
-          toast({
-            title: "Error",
-            description: "Failed to create order. Please try again.",
-            variant: "destructive",
-          });
+        if (!orderRes.ok) {
+          console.error("Error saving order:", await orderRes.text());
+          toast({ title: "Error", description: "Failed to create order. Please try again.", variant: "destructive" });
           setIsSubmitting(false);
           return;
         }

@@ -47,6 +47,9 @@ serve(async (req) => {
   for (const user of users ?? []) {
     if (!user.password) { skipped++; continue; }
 
+    // Supabase Auth requires valid email — non-email usernames get @realtv.local suffix
+    const email = user.username.includes("@") ? user.username : `${user.username}@realtv.local`;
+
     // Call GoTrue admin REST API directly so we can preserve the existing UUID
     const res = await fetch(
       `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users`,
@@ -59,7 +62,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           id: user.id,
-          email: user.username,
+          email: email,
           password: user.password,
           email_confirm: true,
         }),

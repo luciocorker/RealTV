@@ -27,32 +27,20 @@ serve(async (req) => {
       );
     }
 
-    const { message, target, userIds, linkUrl, imageUrl } = await req.json();
+    const { message, target, userIds, linkUrl, imageUrl, adminUserId } = await req.json();
 
-    // Verify the caller is an admin via their JWT
-    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-    if (!token) {
+    // Verify the caller is an admin via adminUserId database lookup
+    if (!adminUserId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !callerUser) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const { data: adminUser, error: adminError } = await supabase
-      .from("users")
-      .select("user_type")
-      .eq("id", callerUser.id)
-      .single();
 
-    if (adminError || !adminUser || adminUser.user_type !== "admin") {
+    const { data: adminUser } = await supabase.from("users").select("user_type").eq("id", adminUserId).single();
+    if (adminUser?.user_type !== "admin") {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

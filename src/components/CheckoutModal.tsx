@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface CheckoutModalProps {
@@ -78,23 +77,35 @@ export function CheckoutModal({
 
     try {
       // Save order to Supabase
-      const { error } = await supabase.from("tv_box_orders").insert({
-        product_name: productName,
-        price: price,
-        amount: amount,
-        full_name: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.paxiPoint,
-        city: "",
-        postal_code: "",
-        payment_reference: reference,
-        payment_status: "pending",
-        notified: false,
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+      const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/tv_box_orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": ANON_KEY,
+          "Authorization": `Bearer ${ANON_KEY}`,
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify({
+          product_name: productName,
+          price: price,
+          amount: amount,
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.paxiPoint,
+          city: "",
+          postal_code: "",
+          payment_reference: reference,
+          payment_status: "pending",
+          notified: false,
+        }),
       });
 
-      if (error) {
-        console.error("Error saving order:", error);
+      if (!orderRes.ok) {
+        const errBody = await orderRes.json().catch(() => ({}));
+        console.error("Error saving order:", errBody);
         toast({
           title: "Error",
           description: "Failed to create order. Please try again.",

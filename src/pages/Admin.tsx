@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const DB_HEADERS = { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": "application/json" };
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -96,14 +99,11 @@ export default function AdminPage() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, username, name, whatsapp_number, expiration_date, user_type, line_id, line_username, line_password, created_at")
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setUsers(data);
-    }
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?select=id,username,name,whatsapp_number,expiration_date,user_type,line_id,line_username,line_password,created_at&order=created_at.desc`,
+      { headers: DB_HEADERS }
+    );
+    if (res.ok) setUsers(await res.json());
     setLoading(false);
   };
 
@@ -144,17 +144,16 @@ export default function AdminPage() {
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const fileName = `admin-msg/${Date.now()}.${ext}`;
-      const { data, error } = await supabase.storage
-        .from("message-images")
-        .upload(fileName, file, { contentType: file.type, upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage
-        .from("message-images")
-        .getPublicUrl(data.path);
-      setMsgImageUrl(urlData.publicUrl);
-    } catch (err: any) {
+      const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/message-images/${fileName}`, {
+        method: "POST",
+        headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": file.type, "x-upsert": "true" },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+      setMsgImageUrl(`${SUPABASE_URL}/storage/v1/object/public/message-images/${fileName}`);
+    } catch (err: unknown) {
       console.error("Image upload failed:", err);
-      alert("Image upload failed: " + (err.message || "Unknown error"));
+      alert("Image upload failed: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setImageUploading(false);
     e.target.value = "";
@@ -166,26 +165,15 @@ export default function AdminPage() {
     setMsgSending(true);
     setMsgResult(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const body: any = { message: msgText, target: msgTarget };
-      if (msgTarget === "selected") {
-        body.userIds = Array.from(selectedUserIds);
-      }
-      if (msgLinkUrl.trim()) {
-        body.linkUrl = msgLinkUrl.trim();
-      }
-      if (msgImageUrl.trim()) {
-        body.imageUrl = msgImageUrl.trim();
-      }
+      const body: Record<string, unknown> = { message: msgText, target: msgTarget, adminUserId: user.id };
+      if (msgTarget === "selected") body.userIds = Array.from(selectedUserIds);
+      if (msgLinkUrl.trim()) body.linkUrl = msgLinkUrl.trim();
+      if (msgImageUrl.trim()) body.imageUrl = msgImageUrl.trim();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-bulk-whatsapp`,
+        `${SUPABASE_URL}/functions/v1/send-bulk-whatsapp`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
           body: JSON.stringify(body),
         }
       );
@@ -195,9 +183,9 @@ export default function AdminPage() {
       try { data = JSON.parse(text); } catch { throw new Error(`Status ${response.status}: ${text.slice(0, 200)}`); }
       if (!response.ok) throw new Error(data.error || `Status ${response.status}: ${text.slice(0, 200)}`);
       setMsgResult({ sent: data.sent, failed: data.failed, skippedNoPhone: data.skippedNoPhone, errors: data.errors });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Bulk message error:", err);
-      setMsgResult({ sent: 0, failed: -1, skippedNoPhone: 0, errorMsg: err.message || "Unknown error" });
+      setMsgResult({ sent: 0, failed: -1, skippedNoPhone: 0, errorMsg: err instanceof Error ? err.message : "Unknown error" });
     }
     setMsgSending(false);
   };
@@ -226,30 +214,25 @@ export default function AdminPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      let body: { userIds?: string[]; deleteAll?: boolean };
+      let body: { userIds?: string[]; deleteAll?: boolean; adminUserId: string };
       let deletedIds: Set<string>;
 
       if (deleteTarget.type === "single") {
-        body = { userIds: [deleteTarget.userId] };
+        body = { userIds: [deleteTarget.userId], adminUserId: user!.id };
         deletedIds = new Set([deleteTarget.userId]);
       } else if (deleteTarget.type === "selected") {
-        body = { userIds: Array.from(selectedUserIds) };
+        body = { userIds: Array.from(selectedUserIds), adminUserId: user!.id };
         deletedIds = new Set(selectedUserIds);
       } else {
-        body = { deleteAll: true };
+        body = { deleteAll: true, adminUserId: user!.id };
         deletedIds = new Set(users.map((u) => u.id));
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-users`,
+        `${SUPABASE_URL}/functions/v1/delete-users`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
           body: JSON.stringify(body),
         }
       );
@@ -262,8 +245,8 @@ export default function AdminPage() {
         deletedIds.forEach((id) => next.delete(id));
         return next;
       });
-    } catch (err: any) {
-      alert("Delete failed: " + (err.message || "Unknown error"));
+    } catch (err: unknown) {
+      alert("Delete failed: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setDeleting(false);
     setDeleteTarget(null);
@@ -284,11 +267,12 @@ export default function AdminPage() {
     setSavingExpiryId(userId);
     try {
       const isoDate = new Date(editingExpiryValue + "T00:00:00").toISOString();
-      const { error } = await supabase
-        .from("users")
-        .update({ expiration_date: isoDate, mobile_expiration_date: isoDate })
-        .eq("id", userId);
-      if (error) throw error;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+        method: "PATCH",
+        headers: { ...DB_HEADERS, "Prefer": "return=minimal" },
+        body: JSON.stringify({ expiration_date: isoDate, mobile_expiration_date: isoDate }),
+      });
+      if (!res.ok) throw new Error(await res.text());
       setUsers((prev) =>
         prev.map((u) => u.id === userId ? { ...u, expiration_date: isoDate } : u)
       );
@@ -317,8 +301,12 @@ export default function AdminPage() {
         line_username: lineForm.line_username.trim() || null,
         line_password: lineForm.line_password.trim() || null,
       };
-      const { error } = await supabase.from("users").update(updates).eq("id", editingLineUser.id);
-      if (error) throw error;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${editingLineUser.id}`, {
+        method: "PATCH",
+        headers: { ...DB_HEADERS, "Prefer": "return=minimal" },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error(await res.text());
       setUsers((prev) =>
         prev.map((u) => u.id === editingLineUser.id ? { ...u, ...updates } : u)
       );

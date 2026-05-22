@@ -1,5 +1,9 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY as string;
+const DB_HEADERS = { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}` };
+const DB_JSON_HEADERS = { ...DB_HEADERS, "Content-Type": "application/json" };
 
 export interface UserProfile {
   id: string;
@@ -32,82 +36,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const isRegistering = useRef(false);
 
-  const fetchProfile = async (id: string): Promise<UserProfile | null> => {
-    const { data } = await supabase.from("users").select(USER_SELECT).eq("id", id).maybeSingle();
-    return data ?? null;
+  const fetchProfileById = async (id: string): Promise<UserProfile | null> => {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${id}&select=${encodeURIComponent(USER_SELECT)}&limit=1`,
+      { headers: DB_HEADERS }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0] ?? null;
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
-      }
-      setIsLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (isRegistering.current) return;
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Restore session from localStorage — no SDK calls that could hang
+    const stored = localStorage.getItem("realtv_user");
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch { localStorage.removeItem("realtv_user"); }
+    }
+    setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: username, password });
-    if (error || !data.user) {
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+    let resp: Response;
+    try {
+      resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?username=eq.${encodeURIComponent(username)}&select=${encodeURIComponent(USER_SELECT + ",password")}&limit=1`,
+        {
+          headers: {
+            "apikey": ANON_KEY,
+            "Authorization": `Bearer ${ANON_KEY}`,
+          },
+        }
+      );
+    } catch {
+      return { success: false, error: "Network error — cannot reach database" };
+    }
+
+    const rows = await resp.json();
+
+    if (!resp.ok) {
+      return { success: false, error: `DB error: ${rows?.message ?? resp.status}` };
+    }
+    if (!rows || rows.length === 0) {
       return { success: false, error: "Invalid username or password" };
     }
-    const profile = await fetchProfile(data.user.id);
-    setUser(profile);
+
+    const row = rows[0];
+    if (row.password !== password) {
+      return { success: false, error: "Invalid username or password" };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _pw, ...profile } = row;
+    setUser(profile as UserProfile);
+    localStorage.setItem("realtv_user", JSON.stringify(profile));
     return { success: true };
   };
 
   const register = async (fields: { username: string; password: string; name: string; whatsapp_number: string }) => {
-    const t0 = performance.now();
-    const elapsed = (label: string) => console.log(`[register] ${label}: ${(performance.now() - t0).toFixed(0)}ms`);
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+    const headers = { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": "application/json" };
 
-    // Run both existence checks in parallel
-    const [{ data: existing }, { data: existingWa }] = await Promise.all([
-      supabase.from("users").select("id").eq("username", fields.username).maybeSingle(),
-      supabase.from("users").select("id").eq("whatsapp_number", fields.whatsapp_number).maybeSingle(),
+    // Check for duplicate username / WhatsApp
+    const [usernameRes, waRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/users?username=eq.${encodeURIComponent(fields.username)}&select=id&limit=1`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/users?whatsapp_number=eq.${encodeURIComponent(fields.whatsapp_number)}&select=id&limit=1`, { headers }),
     ]);
-    elapsed("DB duplicate checks done");
+    const [existingUsers, existingWa] = await Promise.all([usernameRes.json(), waRes.json()]);
+    if (existingUsers?.length > 0) return { success: false, error: "Username already taken" };
+    if (existingWa?.length > 0) return { success: false, error: "This WhatsApp number is already registered to an account." };
 
-    if (existing) {
-      return { success: false, error: "Username already taken" };
-    }
-    if (existingWa) {
-      return { success: false, error: "This WhatsApp number is already registered to an account." };
-    }
-
-    // Verify WhatsApp number — 5 s timeout so a slow Green API doesn't stall registration
+    // Verify WhatsApp number — 5s timeout
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
-      const waCheckRes = await fetch(
-        "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/check-whatsapp",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: fields.whatsapp_number }),
-          signal: controller.signal,
-        }
-      );
+      const waCheckRes = await fetch(`${SUPABASE_URL}/functions/v1/check-whatsapp`, {
+        method: "POST", headers, body: JSON.stringify({ phone: fields.whatsapp_number }), signal: controller.signal,
+      });
       clearTimeout(timer);
       const waCheck = await waCheckRes.json();
-      elapsed(`check-whatsapp done (exists=${waCheck.exists})`);
-      if (!waCheck.exists) {
-        return { success: false, error: "WhatsApp number not valid. Please enter a valid WhatsApp number." };
-      }
-    } catch (e) {
-      elapsed(`check-whatsapp failed/timed out (${e})`);
+      if (!waCheck.exists) return { success: false, error: "WhatsApp number not valid. Please enter a valid WhatsApp number." };
+    } catch {
       // Timeout or network error — fail open
     }
 
@@ -115,102 +127,99 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const trialExpiry = new Date();
     trialExpiry.setHours(trialExpiry.getHours() + 3);
 
-    // Create Supabase Auth account
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: fields.username,
-      password: fields.password,
+    // Create Supabase Auth account via raw fetch
+    const signUpRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: "POST", headers, body: JSON.stringify({ email: fields.username, password: fields.password }),
     });
-    elapsed("signUp done");
-
-    if (signUpError || !authData.user) {
+    const authData = await signUpRes.json();
+    if (!signUpRes.ok || !authData.user) {
       isRegistering.current = false;
-      return { success: false, error: signUpError?.message || "Registration failed" };
+      return { success: false, error: authData.error_description || authData.msg || "Registration failed" };
     }
+    const userId = authData.user.id;
 
-    // Populate the users row created by the DB trigger
-    // Also write password so the Android app can read it from the users table
-    const { data: profileData, error: updateError } = await supabase
-      .from("users")
-      .update({
-        name: fields.name,
-        whatsapp_number: fields.whatsapp_number,
-        expiration_date: trialExpiry.toISOString(),
-        mobile_expiration_date: trialExpiry.toISOString(),
-        password: fields.password,
-      })
-      .eq("id", authData.user.id)
-      .select(USER_SELECT)
-      .single();
-    elapsed("user row update done");
-
-    if (updateError || !profileData) {
+    // Update the users row created by the DB trigger
+    const updateRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`,
+      {
+        method: "PATCH",
+        headers: { ...headers, "Prefer": "return=representation" },
+        body: JSON.stringify({
+          name: fields.name,
+          whatsapp_number: fields.whatsapp_number,
+          expiration_date: trialExpiry.toISOString(),
+          mobile_expiration_date: trialExpiry.toISOString(),
+          password: fields.password,
+        }),
+      }
+    );
+    const updatedRows = await updateRes.json();
+    if (!updateRes.ok || !updatedRows?.[0]) {
       isRegistering.current = false;
-      return { success: false, error: updateError?.message || "Profile setup failed" };
+      return { success: false, error: "Profile setup failed" };
     }
+    const profileData = updatedRows[0];
 
-    // Create a 3-hour trial ArgonTV line
+    // Create 3-hour trial ArgonTV line
     try {
-      const lineResponse = await fetch(
-        "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/create-line",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          },
-          body: JSON.stringify({ username: fields.username, packageId: "3day-trial" }),
-        }
-      );
+      const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-line`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ username: fields.username, packageId: "3day-trial" }),
+      });
       const lineData = await lineResponse.json();
-      elapsed("create-line done");
-      console.log("create-line response:", lineData);
       if (lineData.success) {
         profileData.line_id = lineData.line_id;
         profileData.line_username = lineData.line_username;
         profileData.line_password = lineData.line_password;
       }
     } catch (lineErr) {
-      elapsed("create-line failed");
       console.error("Failed to create line:", lineErr);
     }
 
-    elapsed("registration complete");
     setUser(profileData);
     isRegistering.current = false;
     return { success: true };
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
     setUser(null);
+    localStorage.removeItem("realtv_user");
+    // Fire-and-forget sign out of Supabase Auth if there was a session
+    fetch(`${SUPABASE_URL}/auth/v1/logout`, { method: "POST", headers: DB_HEADERS }).catch(() => {});
   };
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     if (!user) return { success: false, error: "Not logged in" };
 
-    // Verify the current password first
-    const { error: verifyError } = await supabase.auth.signInWithPassword({
-      email: user.username,
-      password: currentPassword,
+    // Verify current password
+    const verifyRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}&password=eq.${encodeURIComponent(currentPassword)}&select=id&limit=1`,
+      { headers: DB_HEADERS }
+    );
+    const verified = await verifyRes.json();
+    if (!verified?.[0]) return { success: false, error: "Current password is incorrect" };
+
+    // Update password
+    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+      method: "PATCH",
+      headers: { ...DB_JSON_HEADERS, "Prefer": "return=minimal" },
+      body: JSON.stringify({ password: newPassword }),
     });
-    if (verifyError) {
-      return { success: false, error: "Current password is incorrect" };
+    if (!updateRes.ok) {
+      const err = await updateRes.json().catch(() => ({})) as { message?: string };
+      return { success: false, error: err.message || "Failed to update password" };
     }
-
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      return { success: false, error: `Failed to update password: ${error.message}` };
-    }
-
     return { success: true };
   };
 
   const refreshUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-    const profile = await fetchProfile(session.user.id);
-    if (profile) setUser(profile);
+    if (!user) return;
+    const profile = await fetchProfileById(user.id);
+    if (profile) {
+      setUser(profile);
+      localStorage.setItem("realtv_user", JSON.stringify(profile));
+    }
   };
 
   return (
