@@ -138,7 +138,7 @@ serve(async (req) => {
                   "Content-Type": "application/json",
                   "X-ApiKey": ARGON_API_KEY,
                 },
-                body: JSON.stringify({ package: planInfo.packageId }),
+                body: JSON.stringify({ package: planInfo.packageId, template: 1996 }),
               });
 
               const createData = await createResponse.json();

@@ -34,7 +34,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
         "X-ApiKey": API_KEY,
       },
-      body: JSON.stringify({ package: TRIAL_PACKAGE }),
+      body: JSON.stringify({ package: TRIAL_PACKAGE, template: 1996 }),
     });
 
     const rawText = await createResponse.text();

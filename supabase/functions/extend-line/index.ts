@@ -103,6 +103,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           package: packageId,
+          template: 1996,
         }),
       });
 
