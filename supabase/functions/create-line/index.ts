@@ -6,17 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const API_BASE = "https://tv.extremeiptv.net:8443";
-const API_KEY = "LcWopthRUnO4KPbZd89BE9PONzEWRR4C0hsbP4WwyML3Shmj62SFQXW9ZQL2H2NODtYnIiUHTntu9EXf2Clq06cbeMcTmuVO321Q";
-const API_AUTH_USER = Deno.env.get("EXTREMEIPTV_AUTH_USER")!;
+const API_BASE = "https://distributors.argontv.nl";
+const API_KEY = "e434f9293543af772518ab99b780ffe0";
 
-const PACKAGES: Record<string, number> = {
-  "3day-trial": 109,
-  "1-month": 101,
-  "3-months": 102,
-  "6-months": 103,
-  "12-months": 104,
-};
+// 3-hour test trial
+const TRIAL_PACKAGE = 113658;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { username, packageId } = await req.json();
+    const { username } = await req.json();
 
     if (!username) {
       return new Response(JSON.stringify({ error: "username is required" }), {
@@ -33,46 +27,42 @@ serve(async (req) => {
       });
     }
 
-    const selectedPackage = PACKAGES[packageId] || PACKAGES["3day-trial"];
-
-    // Call extremeiptv API to create line
-    const createResponse = await fetch(`${API_BASE}/ext/line/create`, {
+    // Call Argon TV API to create trial line
+    const createResponse = await fetch(`${API_BASE}/api/v1/create-line`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Api-Key": API_KEY,
-        "X-Auth-User": API_AUTH_USER,
+        "X-ApiKey": API_KEY,
       },
-      body: JSON.stringify({
-        package: selectedPackage,
-      }),
+      body: JSON.stringify({ package: TRIAL_PACKAGE }),
     });
 
     const rawText = await createResponse.text();
-    console.log("extremeiptv create-line status:", createResponse.status);
-    console.log("extremeiptv create-line raw response:", rawText);
+    console.log("argontv create-line status:", createResponse.status);
+    console.log("argontv create-line raw response:", rawText);
 
     let createData: Record<string, unknown>;
     try {
       createData = JSON.parse(rawText);
     } catch {
-      return new Response(JSON.stringify({ error: "extremeiptv API returned non-JSON", raw: rawText }), {
+      return new Response(JSON.stringify({ error: "argontv API returned non-JSON", raw: rawText }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (!createResponse.ok || createData.error) {
-      console.error("extremeiptv API error:", createData);
+      console.error("argontv API error:", createData);
       return new Response(JSON.stringify({ error: "Failed to create line", details: createData }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const lineId = createData.line_id;
+    const lineId = createData.id as number;
     const lineUsername = createData.username as string;
     const linePassword = createData.password as string;
+    const expirationTime = createData.expiration_time as number;
     console.log("Created line ID:", lineId);
 
     // Update user in Supabase with line credentials
@@ -83,10 +73,10 @@ serve(async (req) => {
     const updateData: Record<string, unknown> = {
       line_username: lineUsername,
       line_password: linePassword,
-      line_id: lineId,
+      line_id: String(lineId),
     };
-    if (createData.expire_at) {
-      updateData.expiration_date = createData.expire_at;
+    if (expirationTime) {
+      updateData.expiration_date = new Date(expirationTime * 1000).toISOString();
     }
 
     const { error: updateError } = await supabase
@@ -102,43 +92,46 @@ serve(async (req) => {
       });
     }
 
-    // Send WhatsApp trial activation message to customer
-    try {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("name, whatsapp_number, username, password")
-        .eq("username", username)
-        .maybeSingle();
+    // Send WhatsApp trial activation message — fire and forget so it doesn't block the response
+    (async () => {
+      try {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("name, whatsapp_number, username, password")
+          .eq("username", username)
+          .maybeSingle();
 
-      const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
-      const apiToken = Deno.env.get("GREEN_API_TOKEN");
+        const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
+        const apiToken = Deno.env.get("GREEN_API_TOKEN");
 
-      if (instanceId && apiToken && userData?.whatsapp_number) {
-        let phone = userData.whatsapp_number.replace(/\D/g, "");
-        if (phone.startsWith("0")) phone = "27" + phone.slice(1);
+        if (instanceId && apiToken && userData?.whatsapp_number) {
+          let phone = userData.whatsapp_number.replace(/\D/g, "");
+          if (phone.startsWith("0")) phone = "27" + phone.slice(1);
 
-        const message =
-          `🎉 *Welcome to RealTV, ${userData.name || username}!*\n\n` +
-          `Your *3-day free trial* has been activated! 📺\n\n` +
-          `*Your login details:*\n` +
-          `• Username: ${userData.username}\n` +
-          `• Password: ${userData.password}\n\n` +
-          `Download the RealTV app and start streaming now!\n\n` +
-          `If you need help, just reply to this message. Enjoy! 🚀`;
+          const message =
+            `🎉 *Welcome to RealTV, ${userData.name || username}!*\n\n` +
+            `Your *3-hour free trial* has been activated! 📺\n\n` +
+            `*Your login details:*\n` +
+            `• Username: ${userData.username}\n` +
+            `• Password: ${userData.password}\n\n` +
+            `Download the RealTV app and start streaming now!\n\n` +
+            `*Want DStv channels? Reply to this message with* *"DSTV"* *and we'll get you set up!* 📡\n\n` +
+            `If you need help, just reply to this message. Enjoy! 🚀`;
 
-        await fetch(
-          `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chatId: `${phone}@c.us`, message }),
-          }
-        );
-        console.log("Trial WhatsApp sent to:", phone);
+          await fetch(
+            `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chatId: `${phone}@c.us`, message }),
+            }
+          );
+          console.log("Trial WhatsApp sent to:", phone);
+        }
+      } catch (waErr) {
+        console.error("Trial WhatsApp failed:", waErr);
       }
-    } catch (waErr) {
-      console.error("Trial WhatsApp failed:", waErr);
-    }
+    })();
 
     return new Response(
       JSON.stringify({
@@ -146,7 +139,7 @@ serve(async (req) => {
         line_id: lineId,
         line_username: lineUsername,
         line_password: linePassword,
-        expiration_time: createData.expire_at,
+        expiration_time: expirationTime,
       }),
 
       {

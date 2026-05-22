@@ -166,7 +166,8 @@ export default function AdminPage() {
     setMsgSending(true);
     setMsgResult(null);
     try {
-      const body: any = { message: msgText, target: msgTarget, adminUserId: user.id };
+      const { data: { session } } = await supabase.auth.getSession();
+      const body: any = { message: msgText, target: msgTarget };
       if (msgTarget === "selected") {
         body.userIds = Array.from(selectedUserIds);
       }
@@ -182,7 +183,7 @@ export default function AdminPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
+            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
           },
           body: JSON.stringify(body),
@@ -225,17 +226,18 @@ export default function AdminPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      let body: { userIds?: string[]; deleteAll?: boolean; adminUserId: string };
+      const { data: { session } } = await supabase.auth.getSession();
+      let body: { userIds?: string[]; deleteAll?: boolean };
       let deletedIds: Set<string>;
 
       if (deleteTarget.type === "single") {
-        body = { userIds: [deleteTarget.userId], adminUserId: user.id };
+        body = { userIds: [deleteTarget.userId] };
         deletedIds = new Set([deleteTarget.userId]);
       } else if (deleteTarget.type === "selected") {
-        body = { userIds: Array.from(selectedUserIds), adminUserId: user.id };
+        body = { userIds: Array.from(selectedUserIds) };
         deletedIds = new Set(selectedUserIds);
       } else {
-        body = { deleteAll: true, adminUserId: user.id };
+        body = { deleteAll: true };
         deletedIds = new Set(users.map((u) => u.id));
       }
 
@@ -245,7 +247,7 @@ export default function AdminPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
+            "Authorization": `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY}`,
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
           },
           body: JSON.stringify(body),

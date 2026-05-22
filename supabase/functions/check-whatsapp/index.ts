@@ -28,8 +28,9 @@ serve(async (req) => {
     const apiToken = Deno.env.get("GREEN_API_TOKEN");
 
     if (!instanceId || !apiToken) {
-      return new Response(JSON.stringify({ error: "Green API not configured" }), {
-        status: 500,
+      // Green API not configured — fail open so registration isn't blocked
+      return new Response(JSON.stringify({ exists: true }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -43,17 +44,30 @@ serve(async (req) => {
       }
     );
 
+    if (!response.ok) {
+      // Green API request failed — fail open
+      console.error("checkWhatsapp HTTP error:", response.status);
+      return new Response(JSON.stringify({ exists: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const data = await response.json();
     console.log("checkWhatsapp result:", data);
 
+    // Only return false when Green API explicitly confirms the number doesn't exist
+    const exists = data.existsWhatsapp !== false;
+
     return new Response(
-      JSON.stringify({ exists: data.existsWhatsapp === true }),
+      JSON.stringify({ exists }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    // Any unexpected error — fail open so registration isn't blocked
     console.error("check-whatsapp error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
+    return new Response(JSON.stringify({ exists: true }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

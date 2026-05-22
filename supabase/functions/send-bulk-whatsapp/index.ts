@@ -27,13 +27,27 @@ serve(async (req) => {
       );
     }
 
-    const { message, target, adminUserId, userIds, linkUrl, imageUrl } = await req.json();
+    const { message, target, userIds, linkUrl, imageUrl } = await req.json();
 
-    // Verify the caller is an admin
+    // Verify the caller is an admin via their JWT
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !callerUser) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { data: adminUser, error: adminError } = await supabase
       .from("users")
       .select("user_type")
-      .eq("id", adminUserId)
+      .eq("id", callerUser.id)
       .single();
 
     if (adminError || !adminUser || adminUser.user_type !== "admin") {

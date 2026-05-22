@@ -59,11 +59,12 @@ import cool1 from "@/assets/cool1.webp";
 import cool2 from "@/assets/cool2.webp";
 import cool3 from "@/assets/cool3.webp";
 import cool4 from "@/assets/cool4.webp";
-import yocoLogo from "@/assets/Yoco_idvii5TN-S_0.png";
+
 import paxiLogo from "@/assets/paxi.png";
 import pepLogo from "@/assets/pep-logo.png";
 import pepHomeLogo from "@/assets/pep-home-logo.png";
 import pepCellLogo from "@/assets/pep-cell-logo.png";
+import ikhokhaLogo from "@/assets/ikhokha.webp";
 
 import { SHOW_SUBSCRIPTIONS } from "@/lib/featureFlags";
 
@@ -855,8 +856,8 @@ function CartCheckoutModal({
 
           {!hasTVBox && (
             <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-              <p>You'll be redirected to Yoco to complete payment.</p>
-              <p className="mt-1">Download the app to create your account and start streaming.</p>
+              <p>You'll be redirected to Ikhokha to complete payment.</p>
+              <p className="mt-1">Download the app and start streaming.</p>
             </div>
           )}
 
@@ -868,7 +869,7 @@ function CartCheckoutModal({
               </>
             ) : (
               <>
-                <img src={yocoLogo} alt="Yoco" className="mr-2 h-5 w-auto" />
+                <img src={ikhokhaLogo} alt="iKhokha" className="mr-2 h-5 w-auto" />
                 {`Pay R${totalPrice.toLocaleString()}`}
               </>
             )}

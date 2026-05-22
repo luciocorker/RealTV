@@ -7,322 +7,313 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const API_BASE = "https://tv.extremeiptv.net:8443";
-const API_KEY = "N3mCudU8IAANw2hSUyvSj5e2x3Hz0nIhffzu2";
-const API_AUTH_USER = Deno.env.get("EXTREMEIPTV_AUTH_USER")!;
+const ARGON_API_BASE = "https://distributors.argontv.nl";
+const ARGON_API_KEY = "e434f9293543af772518ab99b780ffe0";
 
-// Map product names (as stored in tv_box_orders) to extremeiptv package IDs
-const PLAN_MAP: Record<string, { packageId: number; months: number }> = {
-  "Standard Monthly":  { packageId: 101, months: 1 },
-  "Premium Monthly":   { packageId: 101, months: 1 },
-  "3-Month Plan":      { packageId: 102, months: 3 },
-  "6-Month Plan":      { packageId: 103, months: 6 },
-  "Yearly Plan":       { packageId: 104, months: 12 },
+// iKhokha callback URL (must match what was sent in create-checkout)
+const CALLBACK_URL = "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/yoco-webhook";
+
+// Map product names stored in tv_box_orders to Argon TV package IDs
+const PLAN_MAP: Record<string, { packageId: number; days: number; premium: boolean }> = {
+  "Standard Monthly":  { packageId: 113653, days: 30,  premium: false },
+  "Premium Monthly":   { packageId: 113653, days: 30,  premium: true  },
+  "3-Month Plan":      { packageId: 113654, days: 90,  premium: false },
+  "6-Month Plan":      { packageId: 113655, days: 180, premium: false },
+  "Yearly Plan":       { packageId: 113656, days: 365, premium: false },
 };
 
+function jsStringEscape(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "\\'").replace(/\u0000/g, "\\0");
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
-    // Get Yoco webhook secret from environment
-    const webhookSecret = Deno.env.get("YOCO_WEBHOOK_SECRET");
-
-    // Get Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get webhook payload
     const payload = await req.text();
-    const event = JSON.parse(payload);
 
-    console.log("Received Yoco webhook:", event.type);
+    // Verify iKhokha webhook signature
+    const ikSign = req.headers.get("ik-sign");
+    const appSecret = Deno.env.get("IKHOKHA_APP_SECRET") ?? "";
 
-    // Verify webhook signature (Yoco sends signature in header)
-    const signature = req.headers.get("x-yoco-signature");
-    if (signature && webhookSecret) {
-      const expectedSignature = createHmac("sha256", webhookSecret)
-        .update(payload)
+    if (ikSign && appSecret) {
+      const rawSignature = createHmac("sha256", appSecret)
+        .update(CALLBACK_URL + payload)
         .digest("hex");
-      
-      if (signature !== expectedSignature) {
-        console.error("Invalid webhook signature");
+
+      // Also try with jsStringEscape in case iKhokha escapes the payload
+      const escapedSignature = createHmac("sha256", appSecret)
+        .update(jsStringEscape(CALLBACK_URL + payload))
+        .digest("hex");
+
+      if (ikSign !== rawSignature && ikSign !== escapedSignature) {
+        console.error("Invalid iKhokha webhook signature. Got:", ikSign);
         return new Response(JSON.stringify({ error: "Invalid signature" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    } else {
+      console.warn("Signature verification skipped — ik-sign or IKHOKHA_APP_SECRET missing");
     }
 
-    // Handle payment.succeeded event
-    if (event.type === "payment.succeeded") {
-      const payment = event.payload;
-      const reference = payment.metadata?.reference || payment.reference;
+    const event = JSON.parse(payload);
+    console.log("Received iKhokha webhook:", JSON.stringify(event));
 
-      console.log("Payment succeeded for reference:", reference);
+    // iKhokha sends: { paylinkID, status, externalTransactionID, responseCode }
+    const status = event.status;
+    const responseCode = event.responseCode;
+    const reference = event.externalTransactionID;
 
-      if (reference) {
-        // Update order status in database
-        const { data, error } = await supabase
-          .from("tv_box_orders")
-          .update({ 
-            payment_status: "paid",
-            notified: false,
-          })
-          .eq("payment_reference", reference)
-          .select();
+    if (status !== "SUCCESS" || responseCode !== "00") {
+      console.log(`Payment not successful. Status: ${status}, code: ${responseCode}, ref: ${reference}`);
+      return new Response(JSON.stringify({ received: true, processed: false }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-        if (error) {
-          console.error("Error updating order:", error);
-        } else {
-          console.log("Order updated successfully:", data);
+    console.log("Payment succeeded for reference:", reference);
 
-          // Extend line for standard subscriptions using order data
-          if (data && data.length > 0) {
-            for (const order of data) {
-              const planInfo = PLAN_MAP[order.product_name];
-              if (planInfo && order.email) {
-                try {
-                  console.log(`Extending line for ${order.email}, product: ${order.product_name}`);
+    if (!reference) {
+      console.error("No externalTransactionID in webhook payload");
+      return new Response(JSON.stringify({ error: "Missing reference" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-                  // Look up user by email
-                  const { data: user, error: userError } = await supabase
-                    .from("users")
-                    .select("id, line_id, expiration_date")
-                    .eq("username", order.email)
-                    .maybeSingle();
+    // Update order status in database
+    const { data, error } = await supabase
+      .from("tv_box_orders")
+      .update({
+        payment_status: "paid",
+        notified: false,
+      })
+      .eq("payment_reference", reference)
+      .select();
 
-                  if (userError || !user) {
-                    console.error(`User not found for ${order.email}:`, userError);
-                    continue;
-                  }
+    if (error) {
+      console.error("Error updating order:", error);
+      return new Response(JSON.stringify({ error: "DB update failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-                  if (!user.line_id) {
-                    // No existing line — create a new one with the purchased package
-                    console.log(`User ${order.email} has no line ID, creating new line`);
+    console.log("Order updated successfully:", data);
 
-                    const lineUsername = `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-                    const linePassword = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    // Extend Argon TV line for subscription products
+    if (data && data.length > 0) {
+      for (const order of data) {
+        const planInfo = PLAN_MAP[order.product_name];
+        if (planInfo && order.email) {
+          try {
+            console.log(`Extending line for ${order.email}, product: ${order.product_name}`);
 
-                    const createResponse = await fetch(`${API_BASE}/ext/line/create`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "X-Api-Key": API_KEY,
-                        "X-Auth-User": API_AUTH_USER,
-                      },
-                      body: JSON.stringify({
-                        username: lineUsername,
-                        password: linePassword,
-                        package: planInfo.packageId,
-                      }),
-                    });
+            const { data: user, error: userError } = await supabase
+              .from("users")
+              .select("id, line_id, expiration_date")
+              .eq("username", order.email)
+              .maybeSingle();
 
-                    const createData = await createResponse.json();
-                    console.log("extremeiptv create-line response:", createData);
-
-                    if (!createResponse.ok || createData.error) {
-                      console.error(`extremeiptv create-line failed for ${order.email}:`, createData);
-                      continue;
-                    }
-
-                    const updateFields: Record<string, unknown> = {
-                      line_username: lineUsername,
-                      line_password: linePassword,
-                      line_id: createData.line_id,
-                      expiration_date: createData.expire_at,
-                      mobile_expiration_date: createData.expire_at,
-                    };
-
-                    const { error: createUpdateError } = await supabase
-                      .from("users")
-                      .update(updateFields)
-                      .eq("id", user.id);
-
-                    if (createUpdateError) {
-                      console.error(`Failed to save new line for ${order.email}:`, createUpdateError);
-                    } else {
-                      console.log(`New line created for ${order.email}: expiry=${createData.expire_at}`);
-                    }
-                  } else {
-                    // Existing line — renew it
-                    const renewResponse = await fetch(`${API_BASE}/ext/line/${user.line_id}/renew`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "X-Api-Key": API_KEY,
-                        "X-Auth-User": API_AUTH_USER,
-                      },
-                      body: JSON.stringify({
-                        package: planInfo.packageId,
-                      }),
-                    });
-
-                    const renewData = await renewResponse.json();
-                    console.log("extremeiptv renew response:", renewData);
-
-                    if (!renewResponse.ok || renewData.error) {
-                      console.error(`extremeiptv renew failed for ${order.email}:`, renewData);
-                      continue;
-                    }
-
-                    // Update expiration_date using API's returned expire_at
-                    const { error: updateError } = await supabase
-                      .from("users")
-                      .update({ expiration_date: renewData.expire_at, mobile_expiration_date: renewData.expire_at })
-                      .eq("id", user.id);
-
-                    if (updateError) {
-                      console.error(`Failed to update expiration for ${order.email}:`, updateError);
-                    } else {
-                      console.log(`Line renewed for ${order.email}: expiry=${renewData.expire_at}`);
-                    }
-                  }
-                } catch (extendError) {
-                  console.error(`Error extending line for ${order.email}:`, extendError);
-                }
-              }
-            }
-          }
-
-          // Send WhatsApp notification via Green API
-          if (data && data.length > 0) {
-            const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
-            const apiToken = Deno.env.get("GREEN_API_TOKEN");
-            const notifyNumber = Deno.env.get("WHATSAPP_NOTIFY_NUMBER");
-
-            if (instanceId && apiToken && notifyNumber) {
-              // Build product list from all items in the order
-              const productLines = data.map((item: any) => `• ${item.product_name} — ${item.price}`).join("\n");
-              const totalAmount = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-              const firstOrder = data[0];
-
-              // Check if any item has a Paxi delivery point
-              const hasAddress = data.some((item: any) => item.address && item.address.trim() !== "");
-              const addressItem = data.find((item: any) => item.address && item.address.trim() !== "");
-              const addressPart = hasAddress && addressItem
-                ? `\n\n📍 *Paxi Point:*\n${addressItem.address}`
-                : "";
-
-              const message = `🛒 *New Order Paid!*\n\n` +
-                `*Products:*\n${productLines}\n\n` +
-                `*Total:* R${totalAmount.toLocaleString()}\n` +
-                `*Customer:* ${firstOrder.full_name}\n` +
-                `*Email:* ${firstOrder.email}\n` +
-                `*Phone:* ${firstOrder.phone}` +
-                `${addressPart}\n\n` +
-                `*Reference:* ${firstOrder.payment_reference}\n` +
-                `*Date:* ${new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" })}`;
-
-              try {
-                const waResponse = await fetch(
-                  `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      chatId: `${notifyNumber}@c.us`,
-                      message: message,
-                    }),
-                  }
-                );
-                const waResult = await waResponse.json();
-                console.log("WhatsApp notification sent:", waResult);
-
-                // Mark as notified
-                await supabase
-                  .from("tv_box_orders")
-                  .update({ notified: true })
-                  .eq("payment_reference", reference);
-              } catch (waError) {
-                console.error("WhatsApp notification failed:", waError);
-              }
+            if (userError || !user) {
+              console.error(`User not found for ${order.email}:`, userError);
+              continue;
             }
 
-            // Send order confirmation to customer via WhatsApp
-            if (instanceId && apiToken && data && data.length > 0) {
-              const firstOrder = data[0];
-              let customerPhone = firstOrder.phone?.replace(/\D/g, "");
-              if (customerPhone) {
-                // Normalize SA numbers: 0xx -> 27xx
-                if (customerPhone.startsWith("0")) {
-                  customerPhone = "27" + customerPhone.slice(1);
-                }
+            if (!user.line_id) {
+              // No existing line — create one
+              console.log(`User ${order.email} has no line, creating new Argon TV line`);
 
-                const productLines = data.map((item: any) => `• ${item.product_name}`).join("\n");
-                const totalAmount = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+              const createResponse = await fetch(`${ARGON_API_BASE}/api/v1/create-line`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-ApiKey": ARGON_API_KEY,
+                },
+                body: JSON.stringify({ package: planInfo.packageId }),
+              });
 
-                const hasTVBox = data.some((item: any) => {
-                  const name = (item.product_name || "").toLowerCase();
-                  return name.includes("box") || name.includes("maxdorf") || name.includes("maverick") || name.includes("qvwi") || name.includes("mecool");
-                });
+              const createData = await createResponse.json();
+              console.log("Argon TV create-line response:", createData);
 
-                const hasAddress = data.some((item: any) => item.address && item.address.trim() !== "");
-                const addressItem = data.find((item: any) => item.address && item.address.trim() !== "");
-
-                let deliveryPart = "";
-                if (hasTVBox && hasAddress && addressItem) {
-                  deliveryPart = `\n\n📍 *Paxi Collection Point:*\n${addressItem.address}\n🚚 Delivery takes 3–5 business days.`;
-                }
-
-                const customerMessage = `✅ *Order Confirmed!*\n\n` +
-                  `Hi ${firstOrder.full_name},\n\n` +
-                  `Thank you for your purchase from *RealTV*! 🎉\n\n` +
-                  `*Your Order:*\n${productLines}\n\n` +
-                  `*Total Paid:* R${totalAmount.toLocaleString()}` +
-                  `${deliveryPart}\n\n` +
-                  `*Reference:* ${firstOrder.payment_reference}\n\n` +
-                  `If you have any questions, reply to this message. Enjoy RealTV! 📺`;
-
-                try {
-                  const custWaResponse = await fetch(
-                    `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        chatId: `${customerPhone}@c.us`,
-                        message: customerMessage,
-                      }),
-                    }
-                  );
-                  const custWaResult = await custWaResponse.json();
-                  console.log("Customer WhatsApp confirmation sent:", custWaResult);
-                } catch (custWaError) {
-                  console.error("Customer WhatsApp confirmation failed:", custWaError);
-                }
+              if (!createResponse.ok || createData.error) {
+                console.error(`Argon TV create-line failed for ${order.email}:`, createData);
+                continue;
               }
+
+              const newExpirationDate = createData.expiration_time
+                ? new Date((createData.expiration_time as number) * 1000).toISOString()
+                : null;
+
+              await supabase
+                .from("users")
+                .update({
+                  line_username: createData.username,
+                  line_password: createData.password,
+                  line_id: String(createData.id),
+                  expiration_date: newExpirationDate,
+                  max_devices: planInfo.premium ? 2 : 1,
+                })
+                .eq("id", user.id);
+
+              console.log(`New Argon TV line created for ${order.email}: expiry=${newExpirationDate}`);
+            } else {
+              // Existing line — extend it
+              const extendResponse = await fetch(`${ARGON_API_BASE}/api/v1/extend`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-ApiKey": ARGON_API_KEY,
+                },
+                body: JSON.stringify({
+                  lines: [Number(user.line_id)],
+                  package: planInfo.packageId,
+                }),
+              });
+
+              const extendData = await extendResponse.json();
+              console.log("Argon TV extend response:", extendData);
+
+              if (!extendResponse.ok || extendData.error || extendData.successful === 0) {
+                console.error(`Argon TV extend failed for ${order.email}:`, extendData);
+                continue;
+              }
+
+              // Argon TV doesn't return new expiry — calculate from current or now
+              const baseDate = user.expiration_date && new Date(user.expiration_date) > new Date()
+                ? new Date(user.expiration_date)
+                : new Date();
+              const newExpiry = new Date(baseDate.getTime() + planInfo.days * 24 * 60 * 60 * 1000);
+
+              await supabase
+                .from("users")
+                .update({
+                  expiration_date: newExpiry.toISOString(),
+                  max_devices: planInfo.premium ? 2 : 1,
+                })
+                .eq("id", user.id);
+
+              console.log(`Line extended for ${order.email}: expiry=${newExpiry.toISOString()}`);
             }
+          } catch (extendError) {
+            console.error(`Error extending line for ${order.email}:`, extendError);
           }
         }
       }
     }
 
-    // Handle payment.failed event
-    if (event.type === "payment.failed") {
-      const payment = event.payload;
-      const reference = payment.metadata?.reference || payment.reference;
+    // Send WhatsApp notifications
+    if (data && data.length > 0) {
+      const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
+      const apiToken = Deno.env.get("GREEN_API_TOKEN");
+      const notifyNumber = Deno.env.get("WHATSAPP_NOTIFY_NUMBER");
 
-      if (reference) {
-        await supabase
-          .from("tv_box_orders")
-          .update({ payment_status: "failed" })
-          .eq("payment_reference", reference);
+      if (instanceId && apiToken && notifyNumber) {
+        const productLines = data.map((item: any) => `• ${item.product_name} — ${item.price}`).join("\n");
+        const totalAmount = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        const firstOrder = data[0];
+
+        const hasAddress = data.some((item: any) => item.address && item.address.trim() !== "");
+        const addressItem = data.find((item: any) => item.address && item.address.trim() !== "");
+        const addressPart = hasAddress && addressItem
+          ? `\n\n📍 *Paxi Point:*\n${addressItem.address}`
+          : "";
+
+        const message = `🛒 *New Order Paid!*\n\n` +
+          `*Products:*\n${productLines}\n\n` +
+          `*Total:* R${totalAmount.toLocaleString()}\n` +
+          `*Customer:* ${firstOrder.full_name}\n` +
+          `*Email:* ${firstOrder.email}\n` +
+          `*Phone:* ${firstOrder.phone}` +
+          `${addressPart}\n\n` +
+          `*Reference:* ${firstOrder.payment_reference}\n` +
+          `*Date:* ${new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" })}`;
+
+        try {
+          const waResponse = await fetch(
+            `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chatId: `${notifyNumber}@c.us`, message }),
+            }
+          );
+          console.log("Admin WhatsApp notification sent:", await waResponse.json());
+
+          await supabase
+            .from("tv_box_orders")
+            .update({ notified: true })
+            .eq("payment_reference", reference);
+        } catch (waError) {
+          console.error("Admin WhatsApp notification failed:", waError);
+        }
+      }
+
+      // Customer confirmation
+      if (instanceId && apiToken) {
+        const firstOrder = data[0];
+        let customerPhone = firstOrder.phone?.replace(/\D/g, "");
+        if (customerPhone) {
+          if (customerPhone.startsWith("0")) customerPhone = "27" + customerPhone.slice(1);
+
+          const productLines = data.map((item: any) => `• ${item.product_name}`).join("\n");
+          const totalAmount = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+
+          const hasTVBox = data.some((item: any) => {
+            const name = (item.product_name || "").toLowerCase();
+            return name.includes("box") || name.includes("maxdorf") || name.includes("maverick") || name.includes("qvwi") || name.includes("mecool");
+          });
+
+          const addressItem = data.find((item: any) => item.address && item.address.trim() !== "");
+          let deliveryPart = "";
+          if (hasTVBox && addressItem) {
+            deliveryPart = `\n\n📍 *Paxi Collection Point:*\n${addressItem.address}\n🚚 Delivery takes 3–5 business days.`;
+          }
+
+          const customerMessage = `✅ *Order Confirmed!*\n\n` +
+            `Hi ${firstOrder.full_name},\n\n` +
+            `Thank you for your purchase from *RealTV*! 🎉\n\n` +
+            `*Your Order:*\n${productLines}\n\n` +
+            `*Total Paid:* R${totalAmount.toLocaleString()}` +
+            `${deliveryPart}\n\n` +
+            `*Reference:* ${firstOrder.payment_reference}\n\n` +
+            `If you have any questions, reply to this message. Enjoy RealTV! 📺`;
+
+          try {
+            const custWaResponse = await fetch(
+              `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId: `${customerPhone}@c.us`, message: customerMessage }),
+              }
+            );
+            console.log("Customer WhatsApp confirmation sent:", await custWaResponse.json());
+          } catch (custWaError) {
+            console.error("Customer WhatsApp confirmation failed:", custWaError);
+          }
+        }
       }
     }
 
-    return new Response(JSON.stringify({ received: true }), {
+    return new Response(JSON.stringify({ received: true, processed: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Webhook error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+

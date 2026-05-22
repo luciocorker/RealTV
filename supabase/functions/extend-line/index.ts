@@ -7,19 +7,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const API_BASE = "https://tv.extremeiptv.net:8443";
-const API_KEY = "LcWopthRUnO4KPbZd89BE9PONzEWRR4C0hsbP4WwyML3Shmj62SFQXW9ZQL2H2NODtYnIiUHTntu9EXf2Clq06cbeMcTmuVO321Q";
-const API_AUTH_USER = Deno.env.get("EXTREMEIPTV_AUTH_USER")!;
+const API_BASE = "https://distributors.argontv.nl";
+const API_KEY = "e434f9293543af772518ab99b780ffe0";
 
 const PACKAGE_MAP: Record<string, number> = {
-  "std-monthly": 101,           // 1 Month
-  "std-premium-monthly": 101,   // 1 Month
-  "std-3month": 102,            // 3 Months
-  "std-premium-3month": 102,    // 3 Months
-  "std-6month": 103,            // 6 Months
-  "std-premium-6month": 103,    // 6 Months
-  "std-yearly": 104,            // 12 Months
-  "std-premium-yearly": 104,    // 12 Months
+  "std-monthly": 113653,           // 1 Month
+  "std-premium-monthly": 113653,   // 1 Month
+  "std-3month": 113654,            // 3 Months
+  "std-premium-3month": 113654,    // 3 Months
+  "std-6month": 113655,            // 6 Months
+  "std-premium-6month": 113655,    // 6 Months
+  "std-yearly": 113656,            // 12 Months
+  "std-premium-yearly": 113656,    // 12 Months
+};
+
+// Duration in days per package for calculating new expiry (extend API doesn't return it)
+const PACKAGE_DAYS: Record<number, number> = {
+  113653: 30,
+  113654: 90,
+  113655: 180,
+  113656: 365,
 };
 
 // Plans that include 2 TVs + 2 Phones
@@ -88,25 +95,22 @@ serve(async (req) => {
       const lineUsername = `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
       const linePassword = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
-      const createResponse = await fetch(`${API_BASE}/ext/line/create`, {
+      const createResponse = await fetch(`${API_BASE}/api/v1/create-line`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Api-Key": API_KEY,
-          "X-Auth-User": API_AUTH_USER,
+          "X-ApiKey": API_KEY,
         },
         body: JSON.stringify({
-          username: lineUsername,
-          password: linePassword,
           package: packageId,
         }),
       });
 
       const createData = await createResponse.json();
-      console.log("extremeiptv create-line response:", createData);
+      console.log("argontv create-line response:", createData);
 
       if (!createResponse.ok || createData.error) {
-        console.error("extremeiptv create-line error:", createData);
+        console.error("argontv create-line error:", createData);
         return new Response(
           JSON.stringify({ error: "Failed to create line", details: createData }),
           {
@@ -116,13 +120,18 @@ serve(async (req) => {
         );
       }
 
-      const newLineId = createData.line_id;
+      const newLineId = String(createData.id);
+      const newLineUsername = createData.username as string;
+      const newLinePassword = createData.password as string;
+      const newExpirationDate = createData.expiration_time
+        ? new Date((createData.expiration_time as number) * 1000).toISOString()
+        : null;
 
       const updateFields: Record<string, unknown> = {
-        line_username: lineUsername,
-        line_password: linePassword,
+        line_username: newLineUsername,
+        line_password: newLinePassword,
         line_id: newLineId,
-        expiration_date: createData.expire_at,
+        expiration_date: newExpirationDate,
         max_devices: PREMIUM_PLANS.has(planId) ? 2 : 1,
       };
 
@@ -146,9 +155,9 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           created: true,
-          line_username: lineUsername,
-          line_password: linePassword,
-          expiration_date: createData.expire_at,
+          line_username: newLineUsername,
+          line_password: newLinePassword,
+          expiration_date: newExpirationDate,
         }),
         {
           status: 200,
@@ -157,26 +166,26 @@ serve(async (req) => {
       );
     }
 
-    // Existing line — renew it
-    const renewResponse = await fetch(`${API_BASE}/ext/line/${user.line_id}/renew`, {
+    // Existing line — extend it
+    const extendResponse = await fetch(`${API_BASE}/api/v1/extend`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Api-Key": API_KEY,
-        "X-Auth-User": API_AUTH_USER,
+        "X-ApiKey": API_KEY,
       },
       body: JSON.stringify({
+        lines: [Number(user.line_id)],
         package: packageId,
       }),
     });
 
-    const renewData = await renewResponse.json();
-    console.log("extremeiptv renew response:", renewData);
+    const extendData = await extendResponse.json();
+    console.log("argontv extend response:", extendData);
 
-    if (!renewResponse.ok || renewData.error) {
-      console.error("extremeiptv renew error:", renewData);
+    if (!extendResponse.ok || extendData.error || extendData.successful === 0) {
+      console.error("argontv extend error:", extendData);
       return new Response(
-        JSON.stringify({ error: "Failed to renew line", details: renewData }),
+        JSON.stringify({ error: "Failed to extend line", details: extendData }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -184,8 +193,15 @@ serve(async (req) => {
       );
     }
 
-    // Update expiration_date in users table using the API's returned expire_at
-    const updateFields: Record<string, unknown> = { expiration_date: renewData.expire_at };
+    // Argon TV extend doesn't return the new expiry — calculate it ourselves
+    const days = PACKAGE_DAYS[packageId] ?? 30;
+    const baseDate = user.expiration_date && new Date(user.expiration_date) > new Date()
+      ? new Date(user.expiration_date)
+      : new Date();
+    const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+    // Update expiration_date in users table
+    const updateFields: Record<string, unknown> = { expiration_date: newExpiry.toISOString() };
     if (PREMIUM_PLANS.has(planId)) updateFields.max_devices = 2;
     else updateFields.max_devices = 1;
 
@@ -215,7 +231,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        newExpirationDate: renewData.expire_at,
+        newExpirationDate: newExpiry.toISOString(),
       }),
       {
         status: 200,

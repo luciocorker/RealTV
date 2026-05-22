@@ -85,8 +85,8 @@ export default function Account() {
       toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (regPassword.length < 4) {
-      toast({ title: "Error", description: "Password must be at least 4 characters", variant: "destructive" });
+    if (regPassword.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
     setRegLoading(true);
@@ -110,8 +110,8 @@ export default function Account() {
       toast({ title: "Error", description: "New passwords don't match", variant: "destructive" });
       return;
     }
-    if (newPw.length < 4) {
-      toast({ title: "Error", description: "Password must be at least 4 characters", variant: "destructive" });
+    if (newPw.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
     setPwLoading(true);
@@ -482,7 +482,7 @@ export default function Account() {
           </div>
           <DialogTitle className="text-xl">Free Trial Activated!</DialogTitle>
           <DialogDescription className="text-sm">
-            Your <strong>3 day free trial</strong> has been activated. Enjoy full access to RealTV!
+            Your <strong>3 hour free trial</strong> has been activated. Enjoy full access to RealTV!
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center">

@@ -14,8 +14,7 @@ import logo from "@/assets/realtv-logo.png";
 
 import { SHOW_CONTENT_PAGES } from "@/lib/featureFlags";
 
-// Set to true to re-enable the Account button in the navbar
-const SHOW_ACCOUNT = false;
+const SHOW_ACCOUNT = true;
 
 const navLinks = [
   ...(SHOW_CONTENT_PAGES ? [{ href: "/channels", label: "Channels" }] : []),

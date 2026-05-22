@@ -19,10 +19,18 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { userIds, deleteAll, adminUserId } = await req.json();
+    const { userIds, deleteAll } = await req.json();
 
-    // Verify the caller is an admin via their user ID
-    if (!adminUserId) {
+    // Verify the caller is an admin via their JWT
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !callerUser) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -31,7 +39,7 @@ serve(async (req) => {
     const { data: callerProfile } = await supabaseAdmin
       .from("users")
       .select("user_type")
-      .eq("id", adminUserId)
+      .eq("id", callerUser.id)
       .single();
     if (callerProfile?.user_type !== "admin") {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
