@@ -60,12 +60,7 @@ export function DownloadSection() {
                   </p>
                 </div>
                 <PhoneMockup />
-                <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  <a href={mobileApkUrl} target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-5 w-5" />
-                    Download Mobile App
-                  </a>
-                </Button>
+                <p className="text-sm text-muted-foreground italic">Coming soon</p>
               </div>
             </TabsContent>
 
