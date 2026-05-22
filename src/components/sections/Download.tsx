@@ -97,7 +97,7 @@ export function DownloadSection() {
                     <img src={downloaderLogo} alt="Downloader App" className="h-16 w-auto rounded-md" />
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Enter code</span>
-                      <span className="text-lg font-bold tracking-widest text-primary">7001769</span>
+                      <span className="text-lg font-bold tracking-widest text-primary">7316432</span>
                     </div>
                   </div>
                 </div>
