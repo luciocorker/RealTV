@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const ARGON_API_BASE = "https://distributors.argontv.nl";
-const ARGON_API_KEY = "e434f9293543af772518ab99b780ffe0";
+const ARGON_API_KEY = "d65811e842c29e7202851ef162e212a2";
 
 // iKhokha callback URL (must match what was sent in create-checkout)
 const CALLBACK_URL = "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/yoco-webhook";

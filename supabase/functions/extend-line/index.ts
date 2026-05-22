@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const API_BASE = "https://distributors.argontv.nl";
-const API_KEY = "e434f9293543af772518ab99b780ffe0";
+const API_KEY = "d65811e842c29e7202851ef162e212a2";
 
 const PACKAGE_MAP: Record<string, number> = {
   "std-monthly": 113653,           // 1 Month
