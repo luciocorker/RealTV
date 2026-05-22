@@ -9,8 +9,8 @@ const corsHeaders = {
 const API_BASE = "https://distributors.argontv.nl";
 const API_KEY = "e434f9293543af772518ab99b780ffe0";
 
-// 3-hour test trial
-const TRIAL_PACKAGE = 113658;
+// 24-hour test trial
+const TRIAL_PACKAGE = 113657;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -110,7 +110,7 @@ serve(async (req) => {
 
           const message =
             `🎉 *Welcome to RealTV, ${userData.name || username}!*\n\n` +
-            `Your *3-hour free trial* has been activated! 📺\n\n` +
+            `Your *1-day free trial* has been activated! 📺\n\n` +
             `*Your login details:*\n` +
             `• Username: ${userData.username}\n` +
             `• Password: ${userData.password}\n\n` +

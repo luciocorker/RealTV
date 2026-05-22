@@ -482,7 +482,7 @@ export default function Account() {
           </div>
           <DialogTitle className="text-xl">Free Trial Activated!</DialogTitle>
           <DialogDescription className="text-sm">
-            Your <strong>3 hour free trial</strong> has been activated. Enjoy full access to RealTV!
+            Your <strong>1 day free trial</strong> has been activated. Enjoy full access to RealTV!
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center">

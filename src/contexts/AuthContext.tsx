@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     isRegistering.current = true;
     const trialExpiry = new Date();
-    trialExpiry.setHours(trialExpiry.getHours() + 3);
+    trialExpiry.setDate(trialExpiry.getDate() + 1);
 
     // Create Supabase Auth account via raw fetch
     const signUpRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const profileData = updatedRows[0];
 
-    // Create 3-hour trial ArgonTV line
+    // Create 1-day trial ArgonTV line
     try {
       const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-line`, {
         method: "POST",
