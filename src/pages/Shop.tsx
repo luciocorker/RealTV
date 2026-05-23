@@ -69,7 +69,7 @@ import ikhokhaLogo from "@/assets/ikhokha.webp";
 import { SHOW_SUBSCRIPTIONS } from "@/lib/featureFlags";
 
 // Set to true to re-enable the Add to Cart button in product details
-const SHOW_CART = false;
+const SHOW_CART = true;
 
 // ─── Data ───────────────────────────────────────────────
 
