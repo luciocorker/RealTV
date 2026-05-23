@@ -89,6 +89,9 @@ export default function AdminPage() {
   const [lineForm, setLineForm] = useState({ line_id: "", line_username: "", line_password: "" });
   const [savingLine, setSavingLine] = useState(false);
 
+  // User type toggling
+  const [savingUserTypeId, setSavingUserTypeId] = useState<string | null>(null);
+
   const isAdmin = user?.user_type === "admin";
 
   useEffect(() => {
@@ -281,6 +284,26 @@ export default function AdminPage() {
       alert("Update failed: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setSavingExpiryId(null);
+  };
+
+  const toggleUserType = async (u: SubscriptionUser) => {
+    if (savingUserTypeId) return;
+    const newType = u.user_type === "premium" ? "standard" : "premium";
+    setSavingUserTypeId(u.id);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${u.id}`, {
+        method: "PATCH",
+        headers: { ...DB_HEADERS, "Prefer": "return=minimal" },
+        body: JSON.stringify({ user_type: newType }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setUsers((prev) =>
+        prev.map((usr) => usr.id === u.id ? { ...usr, user_type: newType } : usr)
+      );
+    } catch (err: unknown) {
+      alert("Update failed: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+    setSavingUserTypeId(null);
   };
 
   const openLineEdit = (u: SubscriptionUser) => {
@@ -545,6 +568,20 @@ export default function AdminPage() {
                             </Badge>
                           </div>
                           <div className="text-gray-400 text-sm truncate pl-6">{u.username}</div>
+                          <div className="flex items-center gap-2 pl-6">
+                            <button
+                              onClick={() => toggleUserType(u)}
+                              disabled={savingUserTypeId === u.id}
+                              title="Click to toggle plan type"
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize transition-colors ${
+                                u.user_type === "premium"
+                                  ? "bg-purple-600/20 text-purple-400 hover:bg-purple-600/40"
+                                  : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/40"
+                              } ${savingUserTypeId === u.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                            >
+                              {savingUserTypeId === u.id ? "..." : (u.user_type || "standard")}
+                            </button>
+                          </div>
                           <div className="flex items-center justify-between pl-6">
                             <span className="text-gray-400 text-sm">{u.whatsapp_number || "No phone"}</span>
                             {days !== null && (
@@ -642,7 +679,20 @@ export default function AdminPage() {
                         <TableCell className="text-white font-medium">{u.name || "—"}</TableCell>
                         <TableCell className="text-gray-300">{u.username}</TableCell>
                         <TableCell className="text-gray-300">{u.whatsapp_number || "—"}</TableCell>
-                        <TableCell className="text-gray-300 capitalize">{u.user_type || "—"}</TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => toggleUserType(u)}
+                            disabled={savingUserTypeId === u.id}
+                            title="Click to toggle between Standard and Premium"
+                            className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize transition-colors ${
+                              u.user_type === "premium"
+                                ? "bg-purple-600/20 text-purple-400 hover:bg-purple-600/40"
+                                : "bg-blue-600/20 text-blue-400 hover:bg-blue-600/40"
+                            } ${savingUserTypeId === u.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                          >
+                            {savingUserTypeId === u.id ? "..." : (u.user_type || "standard")}
+                          </button>
+                        </TableCell>
                         <TableCell className="text-gray-300">
                           {editingExpiryId === u.id ? (
                             <div className="flex items-center gap-1">
