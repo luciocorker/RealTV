@@ -91,6 +91,21 @@ export default function OrderSuccess() {
           }
         }
 
+        // Send WhatsApp notifications (admin + customer).
+        // The webhook may also attempt this, but the notified flag prevents duplicates.
+        try {
+          await fetch(
+            "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/send-order-notification",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reference: order.reference }),
+            }
+          );
+        } catch (waError) {
+          console.error("WhatsApp notification failed:", waError);
+        }
+
         // Clear the stored order
         localStorage.removeItem("pendingTVBoxOrder");
         setStatus("success");
