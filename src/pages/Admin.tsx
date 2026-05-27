@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2 } from "lucide-react";
+import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2, UserPlus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,7 +57,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired" | "new">("all");
+  const [newUsersDays, setNewUsersDays] = useState<1 | 2 | 3 | 7>(7);
   const [showTable, setShowTable] = useState(false);
 
   // Admin login form state
@@ -91,6 +92,22 @@ export default function AdminPage() {
 
   // User type toggling
   const [savingUserTypeId, setSavingUserTypeId] = useState<string | null>(null);
+
+  // Create user
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({
+    name: "",
+    email: "",
+    whatsapp: "",
+    password: "",
+    user_type: "standard" as "standard" | "premium",
+    plan: "trial" as "trial" | "std-monthly" | "std-3month" | "std-6month" | "std-yearly",
+    lineMethod: "auto" as "auto" | "manual",
+    line_username: "",
+    line_password: "",
+  });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [createUserError, setCreateUserError] = useState("");
 
   const isAdmin = user?.user_type === "admin";
 
@@ -202,6 +219,9 @@ export default function AdminPage() {
 
   const activeUsers = users.filter((u) => getStatus(u.expiration_date) === "active");
   const expiredUsers = users.filter((u) => getStatus(u.expiration_date) === "expired");
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const newCutoff = new Date(now.getTime() - newUsersDays * 24 * 60 * 60 * 1000);
+  const newUsers = users.filter((u) => u.created_at && new Date(u.created_at) >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -209,7 +229,9 @@ export default function AdminPage() {
       u.username?.toLowerCase().includes(search.toLowerCase()) ||
       u.whatsapp_number?.includes(search);
     const matchesStatus =
-      statusFilter === "all" || getStatus(u.expiration_date) === statusFilter;
+      statusFilter === "all" ? true :
+      statusFilter === "new" ? (u.created_at && new Date(u.created_at) >= newCutoff) :
+      getStatus(u.expiration_date) === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -346,6 +368,131 @@ export default function AdminPage() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
+  const generatePassword = () => {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  };
+
+  const PLAN_LABELS: Record<string, string> = {
+    trial: "1-Day Free Trial",
+    "std-monthly": "1 Month",
+    "std-3month": "3 Months",
+    "std-6month": "6 Months",
+    "std-yearly": "1 Year",
+  };
+
+  const handleCreateUser = async () => {
+    setCreateUserError("");
+    const name = createUserForm.name.trim();
+    const email = createUserForm.email.trim().toLowerCase();
+    const whatsapp = createUserForm.whatsapp.trim();
+    if (!name || !email || !whatsapp) {
+      setCreateUserError("Name, email and WhatsApp number are required.");
+      return;
+    }
+    setCreateUserLoading(true);
+    try {
+      const password = createUserForm.password.trim() || generatePassword();
+
+      // Check for duplicate email
+      const checkRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?username=eq.${encodeURIComponent(email)}&select=id&limit=1`,
+        { headers: DB_HEADERS }
+      );
+      const existing = await checkRes.json();
+      if (existing?.length > 0) {
+        setCreateUserError("A user with this email already exists.");
+        setCreateUserLoading(false);
+        return;
+      }
+
+      // Insert user
+      const PLAN_DAYS: Record<string, number> = {
+        trial: 1, "std-monthly": 30, "std-3month": 90, "std-6month": 180, "std-yearly": 365,
+      };
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + (PLAN_DAYS[createUserForm.plan] ?? 1));
+
+      const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: "POST",
+        headers: { ...DB_HEADERS, "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify({ username: email, password, name, whatsapp_number: whatsapp, user_type: createUserForm.user_type, expiration_date: expirationDate.toISOString() }),
+      });
+      if (!insertRes.ok) throw new Error(await insertRes.text());
+      const [newUser] = await insertRes.json();
+
+      if (createUserForm.lineMethod === "manual") {
+        // Save manual line details to user record
+        if (createUserForm.line_username.trim() || createUserForm.line_password.trim()) {
+          await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${newUser.id}`, {
+            method: "PATCH",
+            headers: { ...DB_HEADERS, "Prefer": "return=minimal" },
+            body: JSON.stringify({
+              line_username: createUserForm.line_username.trim() || null,
+              line_password: createUserForm.line_password.trim() || null,
+            }),
+          });
+        }
+        // Send WhatsApp welcome message with manual line details
+        const planLabel = PLAN_LABELS[createUserForm.plan] ?? createUserForm.plan;
+        const message =
+          `🎉 *Welcome to RealTV, ${name}!*\n\n` +
+          `Your *${planLabel} subscription* has been activated! 📺\n\n` +
+          `*Your app login details:*\n` +
+          `• Username: ${email}\n` +
+          `• Password: ${password}\n\n` +
+          `Download the RealTV app and start streaming now!\n\n` +
+          `If you need help, just reply to this message. Enjoy! 🚀`;
+        await fetch(`${SUPABASE_URL}/functions/v1/send-bulk-whatsapp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify({ message, target: "selected", userIds: [newUser.id], adminUserId: user!.id }),
+        });
+      } else if (createUserForm.plan === "trial") {
+        // create-line handles line creation + WhatsApp automatically
+        const lineRes = await fetch(`${SUPABASE_URL}/functions/v1/create-line`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify({ username: email }),
+        });
+        if (!lineRes.ok) throw new Error("User created, but failed to create trial line: " + await lineRes.text());
+      } else {
+        // extend-line creates the line with the correct package
+        const lineRes = await fetch(`${SUPABASE_URL}/functions/v1/extend-line`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify({ userEmail: email, planId: createUserForm.plan }),
+        });
+        if (!lineRes.ok) throw new Error("User created, but failed to create line: " + await lineRes.text());
+
+        // Send WhatsApp welcome message via bulk-whatsapp edge function
+        const planLabel = PLAN_LABELS[createUserForm.plan] ?? createUserForm.plan;
+        const message =
+          `🎉 *Welcome to RealTV, ${name}!*\n\n` +
+          `Your *${planLabel} subscription* has been activated! 📺\n\n` +
+          `*Your login details:*\n` +
+          `• Username: ${email}\n` +
+          `• Password: ${password}\n\n` +
+          `Download the RealTV app and start streaming now!\n\n` +
+          `If you need help, just reply to this message. Enjoy! 🚀`;
+        await fetch(`${SUPABASE_URL}/functions/v1/send-bulk-whatsapp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify({ message, target: "selected", userIds: [newUser.id], adminUserId: user!.id }),
+        });
+      }
+
+      await fetchUsers();
+      setShowTable(true);
+      setStatusFilter("all");
+      setCreateUserOpen(false);
+      setCreateUserForm({ name: "", email: "", whatsapp: "", password: "", user_type: "standard", plan: "trial", lineMethod: "auto", line_username: "", line_password: "" });
+    } catch (err: unknown) {
+      setCreateUserError(err instanceof Error ? err.message : "Failed to create user");
+    }
+    setCreateUserLoading(false);
+  };
+
   // Not logged in or not admin — show login form
   if (!user || !isAdmin) {
     return (
@@ -405,13 +552,19 @@ export default function AdminPage() {
             </h1>
             <p className="text-gray-400 text-sm mt-1">Subscription overview</p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setCreateUserError(""); setCreateUserOpen(true); }}>
+              <UserPlus className="w-4 h-4 mr-1.5" />
+              Create User
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards — click to filter */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card
             className={`bg-gray-900 border-2 cursor-pointer transition-colors ${
               statusFilter === "all" ? "border-blue-500" : "border-gray-800 hover:border-gray-600"
@@ -468,6 +621,25 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card
+            className={`bg-gray-900 border-2 cursor-pointer transition-colors ${
+              statusFilter === "new" ? "border-yellow-500" : "border-gray-800 hover:border-gray-600"
+            }`}
+            onClick={() => { setStatusFilter("new"); setShowTable(true); }}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-yellow-600/20">
+                  <UserPlus className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">New Users</p>
+                  <p className="text-3xl font-bold text-yellow-400">{newUsers.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search bar — always visible */}
@@ -487,16 +659,33 @@ export default function AdminPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-white">
-                {statusFilter === "all" ? "All Users" : statusFilter === "active" ? "Active Users" : "Expired Users"}
+                {statusFilter === "all" ? "All Users" : statusFilter === "active" ? "Active Users" : statusFilter === "new" ? "New Users" : "Expired Users"}
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-400 hover:text-white"
-                onClick={() => { setShowTable(false); setSearch(""); }}
-              >
-                Hide
-              </Button>
+              <div className="flex items-center gap-2">
+                {statusFilter === "new" && (
+                  <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
+                    {([1, 2, 3, 7] as const).map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setNewUsersDays(d)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                          newUsersDays === d ? "bg-yellow-500 text-black" : "text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white"
+                  onClick={() => { setShowTable(false); setSearch(""); }}
+                >
+                  Hide
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -804,6 +993,177 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         )}
+        {/* Create User Dialog */}
+        <Dialog open={createUserOpen} onOpenChange={(open) => { if (!open && !createUserLoading) { setCreateUserOpen(false); setCreateUserError(""); } }}>
+          <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-2xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader className="shrink-0">
+              <DialogTitle className="text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-blue-400" />
+                Create New User
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 py-2 overflow-y-auto pr-1 flex-1 min-h-0">
+              <div className="space-y-3 rounded-lg border border-gray-800 p-3 sm:p-4">
+                <Label className="text-gray-300">Subscription Type *</Label>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {(["standard", "premium"] as const).map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      disabled={createUserLoading}
+                      onClick={() => setCreateUserForm((f) => ({ ...f, user_type: role }))}
+                      className={`rounded-lg border p-2.5 text-center text-sm font-semibold transition-colors disabled:opacity-50 ${
+                        createUserForm.user_type === role
+                          ? "border-green-500 bg-green-600/20 text-green-300"
+                          : "bg-gray-800 border-gray-600 hover:border-gray-400 text-gray-300"
+                      }`}
+                    >
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3 rounded-lg border border-gray-800 p-3 sm:p-4">
+                <Label className="text-gray-300">Account Details *</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-gray-400">Full Name</Label>
+                    <Input
+                      placeholder="John Doe"
+                      value={createUserForm.name}
+                      onChange={(e) => setCreateUserForm((f) => ({ ...f, name: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      disabled={createUserLoading}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-gray-400">WhatsApp Number</Label>
+                    <Input
+                      placeholder="0812345678"
+                      value={createUserForm.whatsapp}
+                      onChange={(e) => setCreateUserForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      disabled={createUserLoading}
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-gray-400">Email (username)</Label>
+                    <Input
+                      type="email"
+                      placeholder="john@example.com"
+                      value={createUserForm.email}
+                      onChange={(e) => setCreateUserForm((f) => ({ ...f, email: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      disabled={createUserLoading}
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-gray-400">Password <span className="text-gray-600">(leave blank to auto-generate)</span></Label>
+                    <Input
+                      placeholder="Auto-generated if empty"
+                      value={createUserForm.password}
+                      onChange={(e) => setCreateUserForm((f) => ({ ...f, password: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      disabled={createUserLoading}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3 rounded-lg border border-gray-800 p-3 sm:p-4">
+                <Label className="text-gray-300">Line Setup *</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  {([{ id: "auto", label: "Auto Create", sub: "Via Argon TV API" }, { id: "manual", label: "Manual Entry", sub: "Enter details yourself" }] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={createUserLoading}
+                      onClick={() => setCreateUserForm((f) => ({ ...f, lineMethod: opt.id }))}
+                      className={`rounded-lg border p-2.5 text-center text-sm transition-colors disabled:opacity-50 ${
+                        createUserForm.lineMethod === opt.id
+                          ? "border-green-500 bg-green-600/20 text-green-300"
+                          : "bg-gray-800 border-gray-600 hover:border-gray-400 text-gray-300"
+                      }`}
+                    >
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className="text-xs opacity-70 mt-0.5">{opt.sub}</div>
+                    </button>
+                  ))}
+                </div>
+                {createUserForm.lineMethod === "manual" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-gray-400">Line Username</Label>
+                      <Input
+                        placeholder="iptv_username"
+                        value={createUserForm.line_username}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, line_username: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        disabled={createUserLoading}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-gray-400">Line Password</Label>
+                      <Input
+                        placeholder="iptv_password"
+                        value={createUserForm.line_password}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, line_password: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        disabled={createUserLoading}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3 rounded-lg border border-gray-800 p-3 sm:p-4">
+                <Label className="text-gray-300">Plan *</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                  {([
+                    { id: "trial", label: "Trial", sub: "24 hours" },
+                    { id: "std-monthly", label: "1 Month", sub: "" },
+                    { id: "std-3month", label: "3 Months", sub: "" },
+                    { id: "std-6month", label: "6 Months", sub: "" },
+                    { id: "std-yearly", label: "1 Year", sub: "" },
+                  ] as const).map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      disabled={createUserLoading}
+                      onClick={() => setCreateUserForm((f) => ({ ...f, plan: plan.id }))}
+                      className={`rounded-lg border p-2.5 text-center text-sm transition-colors disabled:opacity-50 ${
+                        createUserForm.plan === plan.id
+                          ? "border-green-500 bg-green-600/20 text-green-300"
+                          : "bg-gray-800 border-gray-600 hover:border-gray-400 text-gray-300"
+                      }`}
+                    >
+                      <div className="font-semibold">{plan.label}</div>
+                      {plan.sub && <div className="text-xs opacity-70 mt-0.5">{plan.sub}</div>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {createUserError && <p className="text-red-400 text-sm">{createUserError}</p>}
+            </div>
+            <DialogFooter className="shrink-0 border-t border-gray-800 pt-3 bg-gray-900">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateUserOpen(false)}
+                disabled={createUserLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateUser}
+                disabled={createUserLoading}
+              >
+                {createUserLoading ? "Creating..." : "Create User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Line Details Edit Dialog */}
         <Dialog open={!!editingLineUser} onOpenChange={(open) => { if (!open && !savingLine) setEditingLineUser(null); }}>
           <DialogContent className="bg-gray-900 border-gray-700 text-white">
@@ -845,14 +1205,15 @@ export default function AdminPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                size="sm"
                 onClick={() => setEditingLineUser(null)}
                 disabled={savingLine}
               >
                 Cancel
               </Button>
               <Button
-                className="bg-blue-600 hover:bg-blue-700"
+                variant="outline"
+                size="sm"
                 onClick={saveLineDetails}
                 disabled={savingLine}
               >
@@ -1055,12 +1416,13 @@ export default function AdminPage() {
             {/* Send button & result */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-2">
               <Button
+                variant="outline"
+                size="sm"
                 onClick={sendBulkMessage}
                 disabled={msgSending || !msgText.trim()}
-                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto h-12 text-base font-semibold px-8"
-                size="lg"
+                className="w-full sm:w-auto"
               >
-                <Send className="w-5 h-5 mr-2" />
+                <Send className="w-4 h-4 mr-2" />
                 {msgSending ? "Sending..." : "Send Messages"}
               </Button>
 
