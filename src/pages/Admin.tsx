@@ -548,7 +548,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Shield className="w-6 h-6 text-red-500" />
-              Admin Dashboard
+              Admin
             </h1>
             <p className="text-gray-400 text-sm mt-1">Subscription overview</p>
           </div>
@@ -596,7 +596,7 @@ export default function AdminPage() {
                   <CheckCircle className="w-6 h-6 text-green-400" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Active Subscriptions</p>
+                  <p className="text-gray-400 text-sm">Active Users</p>
                   <p className="text-3xl font-bold text-green-400">{activeUsers.length}</p>
                 </div>
               </div>
@@ -615,7 +615,7 @@ export default function AdminPage() {
                   <XCircle className="w-6 h-6 text-red-400" />
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Expired Subscriptions</p>
+                  <p className="text-gray-400 text-sm">Expired Users</p>
                   <p className="text-3xl font-bold text-red-400">{expiredUsers.length}</p>
                 </div>
               </div>
