@@ -1,41 +1,15 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useCart } from "@/contexts/CartContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 import {
   Check,
-  ShoppingCart,
-  Minus,
-  Plus,
-  Trash2,
   X,
   Zap,
   Package,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   Carousel,
   CarouselContent,
@@ -60,16 +34,9 @@ import cool2 from "@/assets/cool2.webp";
 import cool3 from "@/assets/cool3.webp";
 import cool4 from "@/assets/cool4.webp";
 
-import paxiLogo from "@/assets/paxi.png";
-import pepLogo from "@/assets/pep-logo.png";
-import pepHomeLogo from "@/assets/pep-home-logo.png";
-import pepCellLogo from "@/assets/pep-cell-logo.png";
-import ikhokhaLogo from "@/assets/ikhokha.webp";
-
 import { SHOW_SUBSCRIPTIONS } from "@/lib/featureFlags";
 
-// Set to true to re-enable the Add to Cart button in product details
-const SHOW_CART = true;
+const WHATSAPP_NUMBER = "27769681973";
 
 // ─── Data ───────────────────────────────────────────────
 
@@ -262,116 +229,6 @@ const tvBoxes = [
   },
 ];
 
-// ─── Cart Sheet ─────────────────────────────────────────
-
-function CartSheet({ onCheckout }: { onCheckout: () => void }) {
-  const { items, removeItem, updateQuantity, totalPrice, totalItems, isOpen, setIsOpen } = useCart();
-
-  return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
-          <ShoppingCart className="h-5 w-5" />
-          {totalItems > 0 && (
-            <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-              {totalItems}
-            </span>
-          )}
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="flex w-full flex-col sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Cart ({totalItems})
-          </SheetTitle>
-        </SheetHeader>
-
-        {items.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
-            <ShoppingCart className="mb-4 h-12 w-12 opacity-30" />
-            <p>Your cart is empty</p>
-          </div>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto space-y-4 py-4">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground truncate">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {item.type === "subscription" ? "Subscription" : "TV Box"}
-                    </p>
-                    <p className="mt-1 font-semibold text-primary">
-                      {item.priceLabel}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {item.type === "tvbox" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-border pt-4 space-y-4">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span className="text-primary">
-                  R{totalPrice.toLocaleString()}
-                </span>
-              </div>
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => {
-                  setIsOpen(false);
-                  onCheckout();
-                }}
-              >
-                Checkout
-              </Button>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 // ─── TV Box Image Carousel ──────────────────────────────
 
 function TVBoxCard({
@@ -420,7 +277,6 @@ function TVBoxDetail({
   box: (typeof tvBoxes)[0];
   onClose: () => void;
 }) {
-  const { addItem } = useCart();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
 
@@ -516,361 +372,15 @@ function TVBoxDetail({
             ))}
           </ul>
 
-          {SHOW_CART && (
-            <Button
-              className="w-full"
-              onClick={() => {
-                addItem({
-                  id: box.id,
-                  name: box.name,
-                  price: box.price,
-                  priceLabel: box.priceLabel,
-                  type: "tvbox",
-                  image: box.images[0],
-                });
-                onClose();
-              }}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart
-            </Button>
-          )}
+          <Button
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi! I'd like to buy the ${box.name} (${box.priceLabel}).`)}`, "_blank")}
+          >
+            Buy
+          </Button>
         </div>
       </div>
     </div>
-  );
-}
-
-// ─── Checkout Modal ─────────────────────────────────────
-
-function CartCheckoutModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
-  const { items, totalPrice, clearCart } = useCart();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const hasTVBox = items.some((i) => i.type === "tvbox");
-  const hasSubscription = items.some((i) => i.type === "subscription");
-
-  const [formData, setFormData] = useState({
-    fullName: user?.name || "",
-    email: user?.username || "",
-    phone: user?.whatsapp_number || "",
-    paxiPoint: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPaxiMap, setShowPaxiMap] = useState(false);
-
-  // Reset form with user data when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setFormData((prev) => ({
-        ...prev,
-        fullName: prev.fullName || user?.name || "",
-        email: prev.email || user?.username || "",
-        phone: prev.phone || user?.whatsapp_number || "",
-      }));
-    }
-  }, [isOpen, user]);
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
-    } else if (!/^(\+27|0)[0-9]{9}$/.test(formData.phone.replace(/\s/g, ""))) {
-      newErrors.phone = "Please enter a valid SA phone number";
-    }
-
-    if (hasTVBox) {
-      if (!formData.paxiPoint.trim()) newErrors.paxiPoint = "Please select a Paxi point";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-
-    const itemSummary = items
-      .map((i) => `${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ""}`)
-      .join(", ");
-    const reference = `cart-${Date.now()}`;
-
-    try {
-      // Save all orders to Supabase (subscriptions and TV boxes)
-      // Collect standard subscription plan IDs for line extension
-      const standardSubPlanIds = items
-        .filter((i) => i.type === "subscription" && i.id.startsWith("std-"))
-        .map((i) => i.id);
-
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-      for (const item of items) {
-        const isTV = item.type === "tvbox";
-        const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/tv_box_orders`, {
-          method: "POST",
-          headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
-          body: JSON.stringify({
-            product_name: item.name, price: item.priceLabel, amount: item.price * item.quantity,
-            full_name: formData.fullName, email: formData.email, phone: formData.phone,
-            address: isTV ? formData.paxiPoint : "", city: "", postal_code: "",
-            payment_reference: reference, payment_status: "pending", notified: false,
-          }),
-        });
-        if (!orderRes.ok) {
-          console.error("Error saving order:", await orderRes.text());
-          toast({ title: "Error", description: "Failed to create order. Please try again.", variant: "destructive" });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // Determine what's in the cart
-      const subscriptionNames = items.filter((i) => i.type === "subscription").map((i) => i.name);
-      const tvboxNames = items.filter((i) => i.type === "tvbox").map((i) => `${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ""}`);
-
-      // Store reference in localStorage for success page
-      localStorage.setItem(
-        "pendingTVBoxOrder",
-        JSON.stringify({
-          reference,
-          productName: itemSummary,
-          price: `R${totalPrice.toLocaleString()}`,
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          paxiPoint: formData.paxiPoint,
-          subscriptions: subscriptionNames,
-          tvBoxes: tvboxNames,
-          standardSubPlanIds,
-          hasTVBox,
-          hasSubscription,
-          timestamp: Date.now(),
-        })
-      );
-
-      // Build line items for Yoco checkout
-      const lineItems = items.map((item) => ({
-        displayName: item.name,
-        quantity: item.quantity,
-        pricingDetails: {
-          price: item.price * 100, // cents
-        },
-      }));
-
-      // Create Yoco checkout via Edge Function
-      const checkoutResponse = await fetch(
-        "https://bdtgjltygenmxlrifeds.supabase.co/functions/v1/create-checkout",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: totalPrice,
-            reference,
-            customerEmail: formData.email,
-            customerName: formData.fullName,
-            productName: itemSummary,
-            lineItems,
-            standardSubPlanIds,
-          }),
-        }
-      );
-
-      const checkoutData = await checkoutResponse.json();
-
-      if (!checkoutResponse.ok) {
-        console.error("Checkout error:", JSON.stringify(checkoutData, null, 2));
-        const errorDetail = checkoutData?.details?.message || checkoutData?.details?.errorMessage || checkoutData?.error || JSON.stringify(checkoutData);
-        toast({
-          title: "Payment Error",
-          description: errorDetail,
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      clearCart();
-      window.location.href = checkoutData.redirectUrl;
-    } catch (err) {
-      console.error("Error:", err);
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Checkout</DialogTitle>
-          <DialogDescription>
-            {items.length} item{items.length !== 1 ? "s" : ""} — Total: R{totalPrice.toLocaleString()}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Order summary */}
-        <div className="space-y-2 rounded-lg border border-border p-3 bg-muted/30">
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {item.name}
-                {item.quantity > 1 && ` x${item.quantity}`}
-              </span>
-              <span className="font-medium">
-                R{(item.price * item.quantity).toLocaleString()}
-              </span>
-            </div>
-          ))}
-          <div className="border-t border-border pt-2 flex justify-between font-bold">
-            <span>Total</span>
-            <span className="text-primary">R{totalPrice.toLocaleString()}</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name *</Label>
-            <Input
-              id="fullName"
-              value={formData.fullName}
-              onChange={(e) => handleChange("fullName", e.target.value)}
-              placeholder="John Doe"
-            />
-            {errors.fullName && (
-              <p className="text-sm text-red-500">{errors.fullName}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              placeholder="john@example.com"
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number (SA only) *</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              placeholder="081 234 5678"
-            />
-            {errors.phone && (
-              <p className="text-sm text-red-500">{errors.phone}</p>
-            )}
-          </div>
-
-          {hasTVBox && (
-            <>
-              <div className="space-y-2">
-                <Label>Nearest PEP Paxi Point *</Label>
-                <Input
-                  value={formData.paxiPoint}
-                  onChange={(e) => handleChange("paxiPoint", e.target.value)}
-                  placeholder="e.g. (P6465) PEP CPT BLUE ROUTE MALL"
-                />
-                <p className="text-xs text-muted-foreground">Use the map below to find your nearest Paxi point, then type the name above.</p>
-                {errors.paxiPoint && (
-                  <p className="text-sm text-red-500">{errors.paxiPoint}</p>
-                )}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setShowPaxiMap(!showPaxiMap)}
-                >
-                  <img src={paxiLogo} alt="Paxi" className="mr-2 h-5 w-auto" />
-                  {showPaxiMap ? "Hide Map" : "Find Paxi Point on Map"}
-                </Button>
-
-                {showPaxiMap && (
-                  <div className="mt-2 rounded-lg border border-border overflow-hidden">
-                    <iframe
-                      width="100%"
-                      height="400"
-                      src="https://map.paxi.co.za?size=l,m,s&status=1,3,4&maxordervalue=1000&output=nc"
-                      frameBorder="0"
-                      allow="geolocation"
-                      title="Select Paxi Point"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm">
-                <p className="font-medium text-green-600 dark:text-green-400">🚚 FREE Delivery via PEP Paxi</p>
-                <p className="mt-1 text-muted-foreground">Delivery takes 3–5 business days anywhere in South Africa.</p>
-                <p className="mt-2 text-xs text-muted-foreground text-center">Collect from your nearest:</p>
-                <div className="mt-1.5 flex flex-col items-center gap-2">
-                  <img src={pepLogo} alt="PEP" className="h-6 w-auto" />
-                  <img src={pepHomeLogo} alt="PEP Home" className="h-6 w-auto" />
-                  <img src={pepCellLogo} alt="PEP Cell" className="h-6 w-auto" />
-                </div>
-              </div>
-            </>
-          )}
-
-          {!hasTVBox && (
-            <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-              <p>You'll be redirected to Ikhokha to complete payment.</p>
-              <p className="mt-1">Download the app and start streaming.</p>
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <img src={ikhokhaLogo} alt="iKhokha" className="mr-2 h-5 w-auto" />
-                {`Pay R${totalPrice.toLocaleString()}`}
-              </>
-            )}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -879,40 +389,13 @@ function CartCheckoutModal({
 export default function Shop() {
   const [activeCategory, setActiveCategory] = useState<"subscriptions" | "tvboxes">(SHOW_SUBSCRIPTIONS ? "subscriptions" : "tvboxes");
   const [activeTab, setActiveTab] = useState<"standard" | "premium">("standard");
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedBox, setSelectedBox] = useState<(typeof tvBoxes)[0] | null>(null);
-  const { addItem, items } = useCart();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
   const plans = activeTab === "standard" ? standardPlans : premiumPlans;
 
-  const handleAddPlan = (plan: (typeof standardPlans)[0]) => {
-    if (!user) {
-      toast({
-        title: "Account required",
-        description: "Please log in or create an account before purchasing a subscription.",
-        variant: "destructive",
-      });
-      navigate("/account");
-      return;
-    }
-    // Remove any existing subscription before adding new one
-    addItem({
-      id: plan.id,
-      name: plan.title,
-      price: plan.price,
-      priceLabel: plan.priceLabel,
-      type: "subscription",
-    });
-    toast({ title: "Added to cart", description: plan.title });
-  };
-
   return (
-    <>
-      <div className="relative min-h-screen py-20 px-4">
-        <div className="mx-auto max-w-6xl">
+    <div className="relative min-h-screen py-20 px-4">
+      <div className="mx-auto max-w-6xl">
           {/* Page header */}
           <div className="mb-6 text-center">
             <h1 className="mb-4 font-display text-3xl font-bold text-foreground md:text-4xl">
@@ -955,9 +438,6 @@ export default function Shop() {
               </div>
             </div>
             )}
-          </div>
-          <div className="fixed bottom-24 right-6 z-40">
-            <CartSheet onCheckout={() => setCheckoutOpen(true)} />
           </div>
 
           {/* ───── Subscriptions ───── */}
@@ -1004,7 +484,6 @@ export default function Shop() {
             {/* Plan cards */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {plans.map((plan, index) => {
-                const isInCart = items.some((i) => i.id === plan.id);
                 return (
                   <div
                     key={`${activeTab}-${plan.id}`}
@@ -1058,23 +537,11 @@ export default function Shop() {
                       className={cn(
                         "w-full font-semibold",
                         plan.popular &&
-                          "bg-primary text-primary-foreground hover:bg-primary/90",
-                        isInCart && "bg-green-600 hover:bg-green-700 text-white"
+                          "bg-primary text-primary-foreground hover:bg-primary/90"
                       )}
-                      onClick={() => handleAddPlan(plan)}
-                      disabled={isInCart}
+                      onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi! I'd like to buy the ${plan.title} (${plan.priceLabel}/${plan.period}).`)}`, "_blank")}
                     >
-                      {isInCart ? (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          In Cart
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          Add to Cart
-                        </>
-                      )}
+                      Buy
                     </Button>
                   </div>
                 );
@@ -1121,12 +588,6 @@ export default function Shop() {
             )}
           </section>}
         </div>
-      </div>
-
-      <CartCheckoutModal
-        isOpen={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-      />
-    </>
+    </div>
   );
 }
