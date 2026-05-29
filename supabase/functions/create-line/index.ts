@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { username } = await req.json();
+    const { username, send_whatsapp } = await req.json();
 
     if (!username) {
       return new Response(JSON.stringify({ error: "username is required" }), {
@@ -92,46 +92,51 @@ serve(async (req) => {
       });
     }
 
-    // Send WhatsApp trial activation message — fire and forget so it doesn't block the response
-    (async () => {
-      try {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("name, whatsapp_number, username, password")
-          .eq("username", username)
-          .maybeSingle();
+    const shouldSendWhatsapp = send_whatsapp !== false;
 
-        const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
-        const apiToken = Deno.env.get("GREEN_API_TOKEN");
+    // Send WhatsApp trial activation message only when enabled.
+    if (shouldSendWhatsapp) {
+      // Fire and forget so it doesn't block the response.
+      (async () => {
+        try {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("name, whatsapp_number, username, password")
+            .eq("username", username)
+            .maybeSingle();
 
-        if (instanceId && apiToken && userData?.whatsapp_number) {
-          let phone = userData.whatsapp_number.replace(/\D/g, "");
-          if (phone.startsWith("0")) phone = "27" + phone.slice(1);
+          const instanceId = Deno.env.get("GREEN_API_INSTANCE_ID");
+          const apiToken = Deno.env.get("GREEN_API_TOKEN");
 
-          const message =
-            `🎉 *Welcome to RealTV, ${userData.name || username}!*\n\n` +
-            `Your *1-day free trial* has been activated! 📺\n\n` +
-            `*Your login details:*\n` +
-            `• Username: ${userData.username}\n` +
-            `• Password: ${userData.password}\n\n` +
-            `Download the RealTV app and start streaming now!\n\n` +
-            `*Want DStv channels? Reply to this message with* *"DSTV"* *and we'll get you set up!* 📡\n\n` +
-            `If you need help, just reply to this message. Enjoy! 🚀`;
+          if (instanceId && apiToken && userData?.whatsapp_number) {
+            let phone = userData.whatsapp_number.replace(/\D/g, "");
+            if (phone.startsWith("0")) phone = "27" + phone.slice(1);
 
-          await fetch(
-            `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chatId: `${phone}@c.us`, message }),
-            }
-          );
-          console.log("Trial WhatsApp sent to:", phone);
+            const message =
+              `🎉 *Welcome to RealTV, ${userData.name || username}!*\n\n` +
+              `Your *1-day free trial* has been activated! 📺\n\n` +
+              `*Your login details:*\n` +
+              `• Username: ${userData.username}\n` +
+              `• Password: ${userData.password}\n\n` +
+              `Download the RealTV app and start streaming now!\n\n` +
+              `*Want DStv channels? Reply to this message with* *"DSTV"* *and we'll get you set up!* 📡\n\n` +
+              `If you need help, just reply to this message. Enjoy! 🚀`;
+
+            await fetch(
+              `https://api.green-api.com/waInstance${instanceId}/sendMessage/${apiToken}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatId: `${phone}@c.us`, message }),
+              }
+            );
+            console.log("Trial WhatsApp sent to:", phone);
+          }
+        } catch (waErr) {
+          console.error("Trial WhatsApp failed:", waErr);
         }
-      } catch (waErr) {
-        console.error("Trial WhatsApp failed:", waErr);
-      }
-    })();
+      })();
+    }
 
     return new Response(
       JSON.stringify({

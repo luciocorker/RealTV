@@ -165,7 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-line`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ username: fields.username, packageId: "3day-trial" }),
+        body: JSON.stringify({
+          username: fields.username,
+          packageId: "3day-trial",
+          send_whatsapp: false,
+        }),
       });
       const lineData = await lineResponse.json();
       if (lineData.success) {
