@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2, UserPlus } from "lucide-react";
+import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2, UserPlus, Mail } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,6 +76,14 @@ export default function AdminPage() {
   const [imageUploading, setImageUploading] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [msgResult, setMsgResult] = useState<{ sent: number; failed: number; skippedNoPhone: number; errorMsg?: string; errors?: string[] } | null>(null);
+
+  // Bulk email state
+  const [emailTarget, setEmailTarget] = useState<"expired" | "active" | "all" | "selected">("expired");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailHtml, setEmailHtml] = useState("");
+  const [emailSender, setEmailSender] = useState<"renew@realtv.co.za" | "sales@realtv.co.za">("renew@realtv.co.za");
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ sent: number; failed: number; skippedNoEmail: number; errorMsg?: string; errors?: string[] } | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<{ type: "single"; userId: string; name: string } | { type: "selected" } | { type: "all" } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -208,6 +216,42 @@ export default function AdminPage() {
       setMsgResult({ sent: 0, failed: -1, skippedNoPhone: 0, errorMsg: err instanceof Error ? err.message : "Unknown error" });
     }
     setMsgSending(false);
+  };
+
+  const sendBulkEmail = async () => {
+    if (!emailSubject.trim() || !user) return;
+    if (emailTarget === "selected" && selectedUserIds.size === 0) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const body: Record<string, unknown> = {
+        subject: emailSubject,
+        htmlContent: emailHtml,
+        textContent: emailHtml.replace(/<[^>]*>/g, ""),
+        target: emailTarget,
+        adminUserId: user.id,
+        senderEmail: emailSender,
+      };
+      if (emailTarget === "selected") body.userIds = Array.from(selectedUserIds);
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/send-bulk-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify(body),
+        }
+      );
+      const text = await response.text();
+      console.log("Email edge function response:", response.status, text);
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error(`Status ${response.status}: ${text.slice(0, 200)}`); }
+      if (!response.ok) throw new Error(data.error || `Status ${response.status}: ${text.slice(0, 200)}`);
+      setEmailResult({ sent: data.sent, failed: data.failed, skippedNoEmail: data.skippedNoEmail, errors: data.errors });
+    } catch (err: unknown) {
+      console.error("Bulk email error:", err);
+      setEmailResult({ sent: 0, failed: -1, skippedNoEmail: 0, errorMsg: err instanceof Error ? err.message : "Unknown error" });
+    }
+    setEmailSending(false);
   };
 
   const now = new Date();
@@ -1294,6 +1338,28 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Sender email selector */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Sender email</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["renew@realtv.co.za", "sales@realtv.co.za"] as const).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setEmailSender(value)}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                      emailSender === value
+                        ? value === "sales@realtv.co.za"
+                          ? "bg-purple-600 text-white"
+                          : "bg-cyan-600 text-white"
+                        : "bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700"
+                    }`}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Quick templates */}
             <div className="space-y-2">
               <label className="text-sm text-gray-400">Quick templates</label>
@@ -1441,6 +1507,209 @@ export default function AdminPage() {
                       {msgResult.errors && msgResult.errors.length > 0 && (
                         <div className="text-red-400 text-xs mt-1">
                           {msgResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bulk Email Messaging */}
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Mail className="w-5 h-5 text-red-400" />
+              Bulk Email Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Target selector */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Send to</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["selected", "expired", "active", "all"] as const).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setEmailTarget(value)}
+                    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                      emailTarget === value
+                        ? value === "expired"
+                          ? "bg-red-600 text-white"
+                          : value === "active"
+                          ? "bg-green-600 text-white"
+                          : value === "selected"
+                          ? "bg-purple-600 text-white"
+                          : "bg-blue-600 text-white"
+                        : "bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700"
+                    }`}
+                  >
+                    {value === "selected"
+                      ? `Selected (${selectedUserIds.size})`
+                      : value === "expired"
+                      ? `Expired (${expiredUsers.length})`
+                      : value === "active"
+                      ? `Active (${activeUsers.length})`
+                      : `All (${users.length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick templates */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Quick templates</label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  onClick={() => {
+                    setEmailSubject("⏰ Your RealTV subscription is expiring soon");
+                    setEmailHtml(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="background:#0b0e14;font-family:'Space Grotesk',Arial,sans-serif;padding:24px;margin:0">
+<div style="max-width:600px;margin:0 auto;background:#141820;border-radius:12px;border:1px solid #1e2330;overflow:hidden">
+<div style="background:linear-gradient(135deg,#14b8a6,#22c55e,#3b82f6);padding:32px 40px;text-align:center">
+<img src="https://real-tv-iota.vercel.app/realtv-logo.png" width="130" alt="RealTV" style="display:block;margin:0 auto"/>
+<p style="color:rgba(255,255,255,0.8);font-size:12px;margin:8px 0 0;letter-spacing:2px;text-transform:uppercase">Premium IPTV Service</p>
+</div>
+<div style="padding:32px 40px">
+<h1 style="color:#14b8a6;font-size:22px;text-align:center;margin:0 0 20px">⚠️ Subscription Notice</h1>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Hi {name},</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px"><strong>EDIT THIS TEXT</strong> — choose one below:</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px"><strong>For expired users:</strong> Your RealTV subscription has <strong>expired</strong>. You've lost access to <strong>10,000+ live channels</strong>, movies, and series. Renew now to reactivate!</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px"><strong>For users about to expire:</strong> Your RealTV subscription is expiring <strong>in {days} day(s)</strong>. Don't miss out on your favorite content!</p>
+<div style="background:#0b0e14;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #1e2330">
+<p style="color:#718096;font-size:13px;margin:0 0 4px">Account</p>
+<p style="color:#fff;font-size:14px;font-weight:600;margin:0 0 12px">{email}</p>
+<p style="color:#718096;font-size:13px;margin:0 0 4px">Plan</p>
+<p style="color:#fff;font-size:14px;font-weight:600;margin:0">Standard</p>
+</div>
+<div style="text-align:center;margin:28px 0">
+<a href="https://wa.me/27769681973?text=Hi.%20I%27d%20like%20to%20renew%20my%20subscription." style="background:#25D366;border-radius:8px;color:#fff;font-size:16px;font-weight:600;text-decoration:none;display:inline-block;padding:14px 32px">Renew on WhatsApp</a>
+</div>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Tap the button above to renew via WhatsApp.</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Or WhatsApp us directly on <strong>27769681973</strong> if the button doesn't work.</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Best regards,<br><strong>The RealTV Team</strong> 📺</p>
+</div>
+<div style="padding:20px 40px;text-align:center;border-top:1px solid #1e2330">
+<p style="color:#4a5568;font-size:12px;margin:0">RealTV • South Africa<br><a href="https://realtv.co.za" style="color:#14b8a6;text-decoration:underline">realtv.co.za</a></p>
+</div>
+</div>
+</body>
+</html>`);
+                  }}
+                >
+                  🔄 Renewal Reminder
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  onClick={() => {
+                    setEmailSubject("🎉 Special Offer from RealTV");
+                    setEmailHtml(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="background:#0b0e14;font-family:'Space Grotesk',Arial,sans-serif;padding:24px;margin:0">
+<div style="max-width:600px;margin:0 auto;background:#141820;border-radius:12px;border:1px solid #1e2330;overflow:hidden">
+<div style="background:linear-gradient(135deg,#14b8a6,#22c55e,#3b82f6);padding:32px 40px;text-align:center">
+<img src="https://real-tv-iota.vercel.app/realtv-logo.png" width="130" alt="RealTV" style="display:block;margin:0 auto"/>
+<p style="color:rgba(255,255,255,0.8);font-size:12px;margin:8px 0 0;letter-spacing:2px;text-transform:uppercase">Premium IPTV Service</p>
+</div>
+<div style="padding:32px 40px">
+<h1 style="color:#14b8a6;font-size:22px;text-align:center;margin:0 0 20px">🎉 Special Offer</h1>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Hi {name},</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Get the <strong>1 month subscription</strong> for only <strong>R99</strong>! Or go for the <strong>3 month subscription</strong> at just <strong>R249</strong>!</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Enjoy <strong>10,000+ live channels</strong>, the latest movies, and exclusive series at unbeatable prices.</p>
+<div style="text-align:center;margin:28px 0">
+<a href="https://wa.me/27769681973?text=Hi!%20I'd%20like%20to%20get%20the%20offer%20of%201%20month%20subscription%20for%20R99." style="background:#14b8a6;border-radius:8px;color:#fff;font-size:16px;font-weight:600;text-decoration:none;display:inline-block;padding:14px 32px">Get Offer</a>
+</div>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Questions? WhatsApp us on <a href="https://wa.me/27769681973?text=Hi!%20I'm%20interested%20in%20RealTV." style="color:#14b8a6;text-decoration:underline">27769681973</a> or reply to this email.</p>
+<p style="color:#a0aec0;font-size:15px;line-height:1.7;margin:0 0 16px">Best regards,<br><strong>The RealTV Team</strong> 📺</p>
+</div>
+<div style="padding:20px 40px;text-align:center;border-top:1px solid #1e2330">
+<p style="color:#4a5568;font-size:12px;margin:0">RealTV • South Africa<br><a href="https://realtv.co.za" style="color:#14b8a6;text-decoration:underline">realtv.co.za</a></p>
+<p style="color:#3a4460;font-size:11px;margin-top:12px">If you'd prefer not to receive marketing emails, simply reply "unsubscribe".</p>
+</div>
+</div>
+</body>
+</html>`);
+                  }}
+                >
+                  🎉 Marketing
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  onClick={() => {
+                    setEmailSubject("");
+                    setEmailHtml("");
+                  }}
+                >
+                  ✏️ Custom
+                </Button>
+              </div>
+            </div>
+
+            {/* Subject line */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Subject line</label>
+              <Input
+                placeholder="Enter email subject..."
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+
+            {/* HTML content */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">
+                HTML Content <span className="text-gray-600">— use {'{name}'}, {'{email}'}, and {'{days}'} for personalization</span>
+              </label>
+              <Textarea
+                value={emailHtml}
+                onChange={(e) => setEmailHtml(e.target.value)}
+                placeholder="<html>Your email HTML here...</html>"
+                rows={10}
+                className="bg-gray-800 border-gray-700 text-white resize-none font-mono text-xs"
+              />
+            </div>
+
+            {/* Send button & result */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendBulkEmail}
+                disabled={emailSending || !emailSubject.trim()}
+                className="w-full sm:w-auto"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {emailSending ? "Sending..." : "Send Emails"}
+              </Button>
+
+              {emailResult && (
+                <div className="text-sm space-y-1">
+                  {emailResult.failed === -1 ? (
+                    <span className="text-red-400">Failed: {emailResult.errorMsg || "Unknown error"}</span>
+                  ) : (
+                    <>
+                      <span className="text-gray-300">
+                        ✅ {emailResult.sent} sent
+                        {emailResult.failed > 0 && <>, ❌ {emailResult.failed} failed</>}
+                        {emailResult.skippedNoEmail > 0 && (
+                          <>, ⏭️ {emailResult.skippedNoEmail} skipped (no email)</>)}
+                      </span>
+                      {emailResult.errors && emailResult.errors.length > 0 && (
+                        <div className="text-red-400 text-xs mt-1">
+                          {emailResult.errors.map((e, i) => <div key={i}>{e}</div>)}
                         </div>
                       )}
                     </>
