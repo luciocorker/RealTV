@@ -96,63 +96,78 @@ serve(async (req) => {
     let failed = 0;
     const errors: string[] = [];
 
-    for (const user of usersWithEmail) {
-      // Personalize content
-      const daysRemaining = user.expiration_date
-        ? Math.ceil((new Date(user.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : 0;
+    // Process emails in batches to avoid timeout while maintaining error handling
+    const BATCH_SIZE = 10; // Send up to 10 emails concurrently
+    const batches: typeof usersWithEmail[] = [];
+    
+    for (let i = 0; i < usersWithEmail.length; i += BATCH_SIZE) {
+      batches.push(usersWithEmail.slice(i, i + BATCH_SIZE));
+    }
 
-      const personalizedSubject = subject
-        ? subject
-            .replace(/\{name\}/gi, user.name || "Customer")
-            .replace(/\{email\}/gi, user.username || "")
-            .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
-        : "";
+    for (const batch of batches) {
+      // Process each batch concurrently
+      await Promise.all(
+        batch.map(async (user) => {
+          // Personalize content
+          const daysRemaining = user.expiration_date
+            ? Math.ceil((new Date(user.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : 0;
 
-      const personalizedHtml = htmlContent
-        ? htmlContent
-            .replace(/\{name\}/gi, user.name || "Customer")
-            .replace(/\{email\}/gi, user.username || "")
-            .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
-        : "";
+          const personalizedSubject = subject
+            ? subject
+                .replace(/\{name\}/gi, user.name || "Customer")
+                .replace(/\{email\}/gi, user.username || "")
+                .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
+            : "";
 
-      const personalizedText = textContent
-        ? textContent
-            .replace(/\{name\}/gi, user.name || "Customer")
-            .replace(/\{email\}/gi, user.username || "")
-            .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
-        : "";
+          const personalizedHtml = htmlContent
+            ? htmlContent
+                .replace(/\{name\}/gi, user.name || "Customer")
+                .replace(/\{email\}/gi, user.username || "")
+                .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
+            : "";
 
-      try {
-        const resendResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: senderEmail || defaultSender,
-            to: [user.username],
-            subject: personalizedSubject,
-            html: personalizedHtml || undefined,
-            text: personalizedText || undefined,
-          }),
-        });
+          const personalizedText = textContent
+            ? textContent
+                .replace(/\{name\}/gi, user.name || "Customer")
+                .replace(/\{email\}/gi, user.username || "")
+                .replace(/\{days\}/gi, String(Math.max(0, daysRemaining)))
+            : "";
 
-        const resendResult = await resendResponse.json();
-        if (resendResponse.ok && resendResult.id) {
-          sent++;
-        } else {
-          failed++;
-          errors.push(`${user.name || user.username}: ${JSON.stringify(resendResult)}`);
-        }
-      } catch (err) {
-        failed++;
-        errors.push(`${user.name || user.username}: ${err.message}`);
+          try {
+            const resendResponse = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: senderEmail || defaultSender,
+                to: [user.username],
+                subject: personalizedSubject,
+                html: personalizedHtml || undefined,
+                text: personalizedText || undefined,
+              }),
+            });
+
+            const resendResult = await resendResponse.json();
+            if (resendResponse.ok && resendResult.id) {
+              sent++;
+            } else {
+              failed++;
+              errors.push(`${user.name || user.username}: ${JSON.stringify(resendResult)}`);
+            }
+          } catch (err) {
+            failed++;
+            errors.push(`${user.name || user.username}: ${err.message}`);
+          }
+        })
+      );
+
+      // Small delay between batches to avoid rate limiting
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise((r) => setTimeout(r, 300));
       }
-
-      // Small delay to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 200));
     }
 
     return new Response(
