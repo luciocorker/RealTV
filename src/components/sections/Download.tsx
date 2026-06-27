@@ -2,7 +2,7 @@ import { Download, Smartphone, Tv, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import downloaderLogo from "@/assets/downloader.webp";
-import tvApkFile from "@/assets/realtv-tv-v3.apk";
+import tvApkFile from "@/assets/realtv-tv-v8.apk";
 import mobileApkFile from "@/assets/real-mobile-v2.apk";
 const mobileApkUrl = mobileApkFile;
 const tvApkUrl = tvApkFile;
