@@ -1,0 +1,8 @@
+name = "extend-line"
+version = "1.0.0"
+verify_jwt = false
+
+[env]
+B2B_API_BASE_URL = "https://main.extremeiptv.net:8443"
+B2B_API_KEY = "LcWopthRUnO4KPbZd89BE9PONzEWRR4C0hsbP4WwyML3Shmj62SFQXW9ZQL2H2NODtYnIiUHTntu9EXf2Clq06cbeMcTmuVO321Q"
+B2B_AUTH_USER = "N3mCudU8IAANw2hSUyvSj5e2x3Hz0nIhffzu2"

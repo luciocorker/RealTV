@@ -44,6 +44,7 @@ export default function Account() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPw, setRegConfirmPw] = useState("");
   const [regWhatsApp, setRegWhatsApp] = useState("");
+  const [regAccountType, setRegAccountType] = useState<"standard" | "premium">("standard");
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
@@ -95,6 +96,7 @@ export default function Account() {
       password: regPassword,
       name: regName.trim(),
       whatsapp_number: regWhatsApp.trim(),
+      account_type: regAccountType,
     });
     setRegLoading(false);
     if (!result.success) {
@@ -255,6 +257,36 @@ export default function Account() {
                   placeholder="e.g. 0812345678"
                   type="tel"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Package Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRegAccountType("standard")}
+                    className={`rounded-lg border-2 p-3 text-center transition-all ${
+                      regAccountType === "standard"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <p className="font-semibold text-sm">Standard</p>
+                    <p className="text-xs text-muted-foreground">Rest of the world</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegAccountType("premium")}
+                    className={`rounded-lg border-2 p-3 text-center transition-all ${
+                      regAccountType === "premium"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <p className="font-semibold text-sm">DSTV</p>
+                    <p className="text-xs text-muted-foreground">For South Africans</p>
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="regPassword">Password</Label>

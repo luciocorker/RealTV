@@ -21,7 +21,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (fields: { username: string; password: string; name: string; whatsapp_number: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (fields: { username: string; password: string; name: string; whatsapp_number: string; account_type?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const register = async (fields: { username: string; password: string; name: string; whatsapp_number: string }) => {
+  const register = async (fields: { username: string; password: string; name: string; whatsapp_number: string; account_type?: string }) => {
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
     const headers = { "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}`, "Content-Type": "application/json" };
@@ -147,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           name: fields.name,
           whatsapp_number: fields.whatsapp_number,
+          user_type: fields.account_type === "premium" ? "premium" : "standard",
           expiration_date: trialExpiry.toISOString(),
           mobile_expiration_date: trialExpiry.toISOString(),
           password: fields.password,
@@ -160,15 +161,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const profileData = updatedRows[0];
 
-    // Create 1-day trial ArgonTV line
+    // Create trial line based on account type
     try {
-      const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-line`, {
+      const isPremium = fields.account_type === "premium";
+      const lineEndpoint = isPremium ? "create-line-b2b" : "create-line";
+      const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/${lineEndpoint}`, {
         method: "POST",
         headers,
         body: JSON.stringify({
           username: fields.username,
-          packageId: "3day-trial",
-          send_whatsapp: false,
         }),
       });
       const lineData = await lineResponse.json();
@@ -176,6 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileData.line_id = lineData.line_id;
         profileData.line_username = lineData.line_username;
         profileData.line_password = lineData.line_password;
+        if (lineData.expire_at) {
+          profileData.expiration_date = lineData.expire_at;
+        }
       }
     } catch (lineErr) {
       console.error("Failed to create line:", lineErr);
