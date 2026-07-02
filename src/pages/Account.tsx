@@ -260,35 +260,6 @@ export default function Account() {
               </div>
 
               <div className="space-y-2">
-                <Label>Package Type</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRegAccountType("standard")}
-                    className={`rounded-lg border-2 p-3 text-center transition-all ${
-                      regAccountType === "standard"
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <p className="font-semibold text-sm">Standard</p>
-                    <p className="text-xs text-muted-foreground">Rest of the world</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRegAccountType("premium")}
-                    className={`rounded-lg border-2 p-3 text-center transition-all ${
-                      regAccountType === "premium"
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <p className="font-semibold text-sm">DSTV</p>
-                    <p className="text-xs text-muted-foreground">For South Africans</p>
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="regPassword">Password</Label>
                 <div className="relative">
                   <Input

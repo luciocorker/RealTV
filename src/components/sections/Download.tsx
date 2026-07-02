@@ -2,10 +2,9 @@ import { Download, Smartphone, Tv, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import downloaderLogo from "@/assets/downloader.webp";
-import tvApkFile from "@/assets/realtv-tv-v5.apk";
 import mobileApkFile from "@/assets/real-mobile-v2.apk";
 const mobileApkUrl = mobileApkFile;
-const tvApkUrl = tvApkFile;
+const tvApkUrl = "https://github.com/luciocorker/RealTV/raw/refs/heads/main/src/assets/realtv-tv-v5.apk";
 import PhoneMockup from "@/components/PhoneMockup";
 import TVMockup from "@/components/TVMockup";
 
@@ -92,7 +91,7 @@ export function DownloadSection() {
                     <img src={downloaderLogo} alt="Downloader App" className="h-16 w-auto rounded-md" />
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Enter code</span>
-                      <span className="text-lg font-bold tracking-widest text-primary">3694966</span>
+                      <span className="text-lg font-bold tracking-widest text-primary">7255099</span>
                     </div>
                   </div>
                 </div>
