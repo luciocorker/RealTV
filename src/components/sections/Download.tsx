@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import downloaderLogo from "@/assets/downloader.webp";
 import mobileApkFile from "@/assets/real-mobile-v2.apk";
 const mobileApkUrl = mobileApkFile;
-const tvApkUrl = "https://github.com/apprealtv/UK-EPG/raw/refs/heads/main/assets/realtv-tv-v6.apk";
+const tvApkUrl = "https://github.com/apprealtv/UK-EPG/raw/refs/heads/main/assets/realtv-tv-v7.apk";
 import PhoneMockup from "@/components/PhoneMockup";
 import TVMockup from "@/components/TVMockup";
 
@@ -91,7 +91,7 @@ export function DownloadSection() {
                     <img src={downloaderLogo} alt="Downloader App" className="h-16 w-auto rounded-md" />
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Enter code</span>
-                      <span className="text-lg font-bold tracking-widest text-primary">4494768</span>
+                      <span className="text-lg font-bold tracking-widest text-primary">5262529</span>
                     </div>
                   </div>
                 </div>
