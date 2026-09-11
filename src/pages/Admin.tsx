@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2, UserPlus, Mail } from "lucide-react";
+import { Users, CheckCircle, XCircle, Shield, Search, Send, MessageSquare, ImagePlus, X, Upload, Trash2, Pencil, Check, Settings2, UserPlus, Mail, Store, Coins } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,11 +49,13 @@ interface SubscriptionUser {
   line_id: string | null;
   line_username: string | null;
   line_password: string | null;
+  credits: number;
   created_at: string;
 }
 
 export default function AdminPage() {
   const { user, login } = useAuth();
+  const { toast } = useToast();
   const [users, setUsers] = useState<SubscriptionUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -117,9 +120,33 @@ export default function AdminPage() {
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [createUserError, setCreateUserError] = useState("");
 
+  // View toggle: user subscriptions vs reseller management
+  const [view, setView] = useState<"users" | "resellers">("users");
+
+  // Reseller management
+  const [createResellerOpen, setCreateResellerOpen] = useState(false);
+  const [createResellerForm, setCreateResellerForm] = useState({ name: "", email: "", whatsapp: "", password: "" });
+  const [createResellerLoading, setCreateResellerLoading] = useState(false);
+  const [createResellerError, setCreateResellerError] = useState("");
+  const [grantTarget, setGrantTarget] = useState<SubscriptionUser | null>(null);
+  const [grantForm, setGrantForm] = useState({ amount: "", note: "" });
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantError, setGrantError] = useState("");
+
   const isAdmin = user?.user_type === "admin";
 
   useEffect(() => {
+    // Restore admin credentials for the server-verified reseller edge function calls
+    try {
+      const stored = sessionStorage.getItem("realtv_admin_auth");
+      if (stored) {
+        const creds = JSON.parse(stored);
+        setAdminUsername(creds.username || "");
+        setAdminPassword(creds.password || "");
+      }
+    } catch {
+      sessionStorage.removeItem("realtv_admin_auth");
+    }
     if (isAdmin) {
       fetchUsers();
     }
@@ -127,12 +154,30 @@ export default function AdminPage() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/users?select=id,username,name,whatsapp_number,expiration_date,user_type,line_id,line_username,line_password,created_at&order=created_at.desc`,
-      { headers: DB_HEADERS }
-    );
-    if (res.ok) setUsers(await res.json());
-    setLoading(false);
+    try {
+      // Supabase caps each REST request at 1000 rows, so page through all users
+      const PAGE_SIZE = 1000;
+      const base =
+        `${SUPABASE_URL}/rest/v1/users?select=id,username,name,whatsapp_number,expiration_date,user_type,line_id,line_username,line_password,credits,created_at&order=created_at.desc`;
+      const all: SubscriptionUser[] = [];
+      let offset = 0;
+      while (true) {
+        const res = await fetch(
+          `${base}&limit=${PAGE_SIZE}&offset=${offset}`,
+          { headers: DB_HEADERS }
+        );
+        if (!res.ok) throw new Error(`Failed to fetch users (status ${res.status})`);
+        const page: SubscriptionUser[] = await res.json();
+        all.push(...page);
+        if (page.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      setUsers(all);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -142,6 +187,9 @@ export default function AdminPage() {
     const result = await login(adminUsername, adminPassword);
     if (!result.success) {
       setLoginError(result.error || "Login failed");
+    } else {
+      // Keep admin credentials for edge functions that verify the admin server-side (reseller management)
+      sessionStorage.setItem("realtv_admin_auth", JSON.stringify({ username: adminUsername, password: adminPassword }));
     }
     setLoginLoading(false);
   };
@@ -278,6 +326,8 @@ export default function AdminPage() {
       getStatus(u.expiration_date) === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const resellers = users.filter((u) => u.user_type === "reseller");
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -537,6 +587,68 @@ export default function AdminPage() {
     setCreateUserLoading(false);
   };
 
+  // ----- Reseller management (server-verified via the admin-resellers edge function) -----
+  const callAdminResellers = async (payload: Record<string, unknown>) => {
+    if (!adminUsername || !adminPassword) {
+      throw new Error("Admin session expired — please sign out and sign in again, then retry.");
+    }
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-resellers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": ANON_KEY, "Authorization": `Bearer ${ANON_KEY}` },
+      body: JSON.stringify({ ...payload, adminUsername, adminPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+    return data;
+  };
+
+  const handleCreateReseller = async () => {
+    setCreateResellerError("");
+    const name = createResellerForm.name.trim();
+    const email = createResellerForm.email.trim().toLowerCase();
+    const whatsapp = createResellerForm.whatsapp.trim();
+    const password = createResellerForm.password.trim();
+    if (!name || !email || !whatsapp || !password) {
+      setCreateResellerError("Name, email, WhatsApp number and password are required.");
+      return;
+    }
+    setCreateResellerLoading(true);
+    try {
+      await callAdminResellers({ action: "create", name, email, whatsapp, password });
+      toast({ title: "Reseller created", description: `${name} can now sign in at /reseller` });
+      setCreateResellerOpen(false);
+      setCreateResellerForm({ name: "", email: "", whatsapp: "", password: "" });
+      await fetchUsers();
+    } catch (err: unknown) {
+      setCreateResellerError(err instanceof Error ? err.message : "Failed to create reseller");
+    }
+    setCreateResellerLoading(false);
+  };
+
+  const handleGrantCredits = async () => {
+    if (!grantTarget) return;
+    setGrantError("");
+    const amount = parseInt(grantForm.amount, 10);
+    if (!Number.isFinite(amount) || amount === 0) {
+      setGrantError("Enter a non-zero whole number (use a negative number to deduct).");
+      return;
+    }
+    setGrantLoading(true);
+    try {
+      const data = await callAdminResellers({ action: "grant", resellerId: grantTarget.id, amount, note: grantForm.note.trim() });
+      setUsers((prev) => prev.map((u) => (u.id === grantTarget.id ? { ...u, credits: data.credits } : u)));
+      toast({
+        title: amount > 0 ? "Credits added" : "Credits deducted",
+        description: `${grantTarget.name || grantTarget.username} now has ${data.credits} credits`,
+      });
+      setGrantTarget(null);
+      setGrantForm({ amount: "", note: "" });
+    } catch (err: unknown) {
+      setGrantError(err instanceof Error ? err.message : "Failed to update credits");
+    }
+    setGrantLoading(false);
+  };
+
   // Not logged in or not admin — show login form
   if (!user || !isAdmin) {
     return (
@@ -597,10 +709,40 @@ export default function AdminPage() {
             <p className="text-gray-400 text-sm mt-1">Subscription overview</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setCreateUserError(""); setCreateUserOpen(true); }}>
-              <UserPlus className="w-4 h-4 mr-1.5" />
-              Create User
-            </Button>
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => setView("users")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "users" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
+              >
+                Users
+              </button>
+              <button
+                onClick={() => setView("resellers")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "resellers" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
+              >
+                Resellers
+              </button>
+            </div>
+            {view === "users" ? (
+              <Button variant="outline" size="sm" onClick={() => { setCreateUserError(""); setCreateUserOpen(true); }}>
+                <UserPlus className="w-4 h-4 mr-1.5" />
+                Create User
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCreateResellerError("");
+                  setCreateResellerForm({ name: "", email: "", whatsapp: "", password: "" });
+                  setCreateResellerOpen(true);
+                }}
+              >
+                <UserPlus className="w-4 h-4 mr-1.5" />
+                Create Reseller
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
@@ -686,7 +828,78 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Search bar — always visible */}
+        {/* Resellers management */}
+        {view === "resellers" && (
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-purple-400" />
+                  Resellers
+                </CardTitle>
+                <Badge variant="outline" className="border-gray-700 text-gray-400">
+                  {resellers.length} reseller{resellers.length === 1 ? "" : "s"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-gray-400 text-center py-8">Loading resellers...</p>
+              ) : resellers.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  No resellers yet — click "Create Reseller" to add one.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-gray-800 hover:bg-transparent">
+                        <TableHead className="text-gray-400">Name</TableHead>
+                        <TableHead className="text-gray-400">Email</TableHead>
+                        <TableHead className="text-gray-400">WhatsApp</TableHead>
+                        <TableHead className="text-gray-400">Credits</TableHead>
+                        <TableHead className="text-gray-400">Created</TableHead>
+                        <TableHead className="text-gray-400 w-32"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {resellers.map((r) => (
+                        <TableRow key={r.id} className="border-gray-800">
+                          <TableCell className="text-white font-medium">{r.name || "—"}</TableCell>
+                          <TableCell className="text-gray-300">{r.username}</TableCell>
+                          <TableCell className="text-gray-300">{r.whatsapp_number || "—"}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30">
+                              <Coins className="w-3 h-3 mr-1" />
+                              {r.credits ?? 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-400 text-sm">
+                            {r.created_at ? new Date(r.created_at).toLocaleDateString("en-ZA") : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-green-700 text-green-400 hover:bg-green-900/20"
+                              onClick={() => { setGrantTarget(r); setGrantForm({ amount: "", note: "" }); setGrantError(""); }}
+                            >
+                              <Coins className="w-4 h-4 mr-1" />
+                              Credits
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Search bar — users view only */}
+        {view === "users" && (
         <div className="relative w-full sm:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <Input
@@ -696,9 +909,10 @@ export default function AdminPage() {
             className="pl-9 bg-gray-900 border-gray-700 text-white"
           />
         </div>
+        )}
 
         {/* Users Table */}
-        {(showTable || search.trim().length > 0) && (
+        {view === "users" && (showTable || search.trim().length > 0) && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -1719,6 +1933,132 @@ export default function AdminPage() {
             </div>
           </CardContent>
         </Card>
+        {/* Create Reseller Dialog */}
+        <Dialog open={createResellerOpen} onOpenChange={(open) => { if (!open && !createResellerLoading) { setCreateResellerOpen(false); setCreateResellerError(""); } }}>
+          <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-purple-400" />
+                Create Reseller
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">Name</Label>
+                <Input
+                  placeholder="Reseller name"
+                  value={createResellerForm.name}
+                  onChange={(e) => setCreateResellerForm((f) => ({ ...f, name: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  disabled={createResellerLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">Email (login)</Label>
+                <Input
+                  placeholder="reseller@email.com"
+                  value={createResellerForm.email}
+                  onChange={(e) => setCreateResellerForm((f) => ({ ...f, email: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  disabled={createResellerLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">WhatsApp Number</Label>
+                <Input
+                  placeholder="0812345678"
+                  value={createResellerForm.whatsapp}
+                  onChange={(e) => setCreateResellerForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  disabled={createResellerLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Password"
+                    value={createResellerForm.password}
+                    onChange={(e) => setCreateResellerForm((f) => ({ ...f, password: e.target.value }))}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    disabled={createResellerLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setCreateResellerForm((f) => ({ ...f, password: generatePassword() }))}
+                    disabled={createResellerLoading}
+                  >
+                    Generate
+                  </Button>
+                </div>
+              </div>
+              {createResellerError && <p className="text-red-500 text-sm">{createResellerError}</p>}
+              <p className="text-gray-500 text-xs">
+                The reseller signs in at <span className="text-gray-300">/reseller</span> and extends customer accounts using their credits.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setCreateResellerOpen(false); setCreateResellerError(""); }} disabled={createResellerLoading}>
+                Cancel
+              </Button>
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={handleCreateReseller} disabled={createResellerLoading}>
+                {createResellerLoading ? "Creating..." : "Create Reseller"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Grant Credits Dialog */}
+        <Dialog open={!!grantTarget} onOpenChange={(open) => { if (!open && !grantLoading) { setGrantTarget(null); setGrantError(""); } }}>
+          <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-amber-400" />
+                Credits — {grantTarget?.name || grantTarget?.username}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-400">
+                Current balance: <span className="text-amber-400 font-semibold">{grantTarget?.credits ?? 0} credits</span>
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">Amount (negative to deduct)</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 10 or -5"
+                  value={grantForm.amount}
+                  onChange={(e) => setGrantForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  disabled={grantLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-400">Note (optional)</Label>
+                <Input
+                  placeholder="e.g. Payment received"
+                  value={grantForm.note}
+                  onChange={(e) => setGrantForm((f) => ({ ...f, note: e.target.value }))}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  disabled={grantLoading}
+                />
+              </div>
+              {grantError && <p className="text-red-500 text-sm">{grantError}</p>}
+              <p className="text-gray-500 text-xs">
+                Plan costs: 1 month = 1 credit · 2 months = 2 · 3 months = 3 · 6 months = 5 · 1 year = 10.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setGrantTarget(null); setGrantError(""); }} disabled={grantLoading}>
+                Cancel
+              </Button>
+              <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleGrantCredits} disabled={grantLoading}>
+                {grantLoading ? "Saving..." : "Update Credits"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

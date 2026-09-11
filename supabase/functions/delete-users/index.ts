@@ -46,12 +46,23 @@ serve(async (req) => {
 
     if (deleteAll) {
       // Fetch all non-admin user IDs
-      const { data, error } = await supabaseAdmin
-        .from("users")
-        .select("id")
-        .neq("user_type", "admin");
-      if (error) throw error;
-      idsToDelete = (data ?? []).map((u: { id: string }) => u.id);
+      // Supabase caps each request at 1000 rows, so page through all users
+      const PAGE_SIZE = 1000;
+      const all: { id: string }[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabaseAdmin
+          .from("users")
+          .select("id")
+          .neq("user_type", "admin")
+          .order("id")
+          .range(offset, offset + PAGE_SIZE - 1);
+        if (error) throw error;
+        all.push(...(data ?? []));
+        if ((data ?? []).length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      idsToDelete = all.map((u: { id: string }) => u.id);
     } else if (Array.isArray(userIds) && userIds.length > 0) {
       idsToDelete = userIds;
     } else {

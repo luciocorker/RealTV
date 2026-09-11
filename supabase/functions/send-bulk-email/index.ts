@@ -53,39 +53,45 @@ serve(async (req) => {
     }
 
     // Fetch users based on target
+    // Supabase caps each request at 1000 rows, so page through all users
+    const PAGE_SIZE = 1000;
+    const fetchAllUsers = async (
+      columns: string,
+      applyFilters: (q: any) => any
+    ): Promise<any[]> => {
+      const all: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error: usersError } = await applyFilters(
+          supabase.from("users").select(columns).order("id")
+        ).range(offset, offset + PAGE_SIZE - 1);
+        if (usersError) throw new Error(`Failed to fetch users: ${usersError.message}`);
+        all.push(...(data ?? []));
+        if ((data ?? []).length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      return all;
+    };
+
     let users;
     if (target === "selected" && Array.isArray(userIds) && userIds.length > 0) {
-      const { data, error: usersError } = await supabase
-        .from("users")
-        .select("id, name, username, expiration_date, user_type")
-        .in("id", userIds);
-      if (usersError) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch users", details: usersError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      users = data;
+      users = await fetchAllUsers(
+        "id, name, username, expiration_date, user_type",
+        (q) => q.in("id", userIds)
+      );
     } else {
-      let query = supabase
-        .from("users")
-        .select("id, name, username, expiration_date, user_type")
-        .neq("user_type", "admin");
-
-      if (target === "expired") {
-        query = query.lt("expiration_date", new Date().toISOString());
-      } else if (target === "active") {
-        query = query.gte("expiration_date", new Date().toISOString());
-      }
-
-      const { data, error: usersError } = await query;
-      if (usersError) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch users", details: usersError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      users = data;
+      users = await fetchAllUsers(
+        "id, name, username, expiration_date, user_type",
+        (q) => {
+          let query = q.neq("user_type", "admin");
+          if (target === "expired") {
+            query = query.lt("expiration_date", new Date().toISOString());
+          } else if (target === "active") {
+            query = query.gte("expiration_date", new Date().toISOString());
+          }
+          return query;
+        }
+      );
     }
 
     const usersWithEmail = (users || []).filter(

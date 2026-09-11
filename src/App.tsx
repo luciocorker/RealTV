@@ -16,6 +16,7 @@ import SetupPage from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 import OrderSuccess from "./pages/OrderSuccess";
 import AdminPage from "./pages/Admin";
+import ResellerPage from "./pages/Reseller";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/order-success" element={<OrderSuccess />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/reseller" element={<ResellerPage />} />
             <Route path="/shipping-policy" element={<ShippingPolicy />} />
             <Route path="/refund-policy" element={<RefundPolicy />} />
           </Route>
