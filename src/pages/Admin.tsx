@@ -50,6 +50,7 @@ interface SubscriptionUser {
   line_username: string | null;
   line_password: string | null;
   credits: number;
+  created_by: string | null;
   created_at: string;
 }
 
@@ -158,7 +159,7 @@ export default function AdminPage() {
       // Supabase caps each REST request at 1000 rows, so page through all users
       const PAGE_SIZE = 1000;
       const base =
-        `${SUPABASE_URL}/rest/v1/users?select=id,username,name,whatsapp_number,expiration_date,user_type,line_id,line_username,line_password,credits,created_at&order=created_at.desc`;
+        `${SUPABASE_URL}/rest/v1/users?select=id,username,name,whatsapp_number,expiration_date,user_type,line_id,line_username,line_password,credits,created_by,created_at&order=created_at.desc`;
       const all: SubscriptionUser[] = [];
       let offset = 0;
       while (true) {
@@ -327,7 +328,8 @@ export default function AdminPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const resellers = users.filter((u) => u.user_type === "reseller");
+  const resellers = users.filter((u) => u.user_type === "reseller" || u.user_type === "sub_reseller");
+  const resellerNameById = new Map(users.map((x) => [x.id, x.name || x.username]));
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -697,29 +699,29 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+    <div className="min-h-screen bg-black text-white px-3 py-5 sm:px-4 sm:py-8">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+        {/* Header — stacked on mobile, row on larger screens */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="shrink-0">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Shield className="w-6 h-6 text-red-500" />
               Admin
             </h1>
             <p className="text-gray-400 text-sm mt-1">Subscription overview</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1">
               <button
                 onClick={() => setView("users")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "users" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex-1 ${view === "users" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
               >
                 Users
               </button>
               <button
                 onClick={() => setView("resellers")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === "resellers" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex-1 ${view === "resellers" ? "bg-red-600 text-white" : "text-gray-400 hover:text-white"}`}
               >
                 Resellers
               </button>
@@ -750,21 +752,21 @@ export default function AdminPage() {
         </div>
 
         {/* Stats Cards — click to filter */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <Card
             className={`bg-gray-900 border-2 cursor-pointer transition-colors ${
               statusFilter === "all" ? "border-blue-500" : "border-gray-800 hover:border-gray-600"
             }`}
             onClick={() => { setStatusFilter("all"); setShowTable(true); }}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-blue-600/20">
-                  <Users className="w-6 h-6 text-blue-400" />
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-blue-600/20 shrink-0">
+                  <Users className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" />
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Total Users</p>
-                  <p className="text-3xl font-bold text-white">{users.length}</p>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-xs sm:text-sm truncate">Total Users</p>
+                  <p className="text-xl sm:text-3xl font-bold text-white">{users.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -776,14 +778,14 @@ export default function AdminPage() {
             }`}
             onClick={() => { setStatusFilter("active"); setShowTable(true); }}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-green-600/20">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-green-600/20 shrink-0">
+                  <CheckCircle className="w-4 h-4 sm:w-6 sm:h-6 text-green-400" />
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Active Users</p>
-                  <p className="text-3xl font-bold text-green-400">{activeUsers.length}</p>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-xs sm:text-sm truncate">Active Users</p>
+                  <p className="text-xl sm:text-3xl font-bold text-green-400">{activeUsers.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -795,14 +797,14 @@ export default function AdminPage() {
             }`}
             onClick={() => { setStatusFilter("expired"); setShowTable(true); }}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-red-600/20">
-                  <XCircle className="w-6 h-6 text-red-400" />
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-red-600/20 shrink-0">
+                  <XCircle className="w-4 h-4 sm:w-6 sm:h-6 text-red-400" />
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Expired Users</p>
-                  <p className="text-3xl font-bold text-red-400">{expiredUsers.length}</p>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-xs sm:text-sm truncate">Expired Users</p>
+                  <p className="text-xl sm:text-3xl font-bold text-red-400">{expiredUsers.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -814,14 +816,14 @@ export default function AdminPage() {
             }`}
             onClick={() => { setStatusFilter("new"); setShowTable(true); }}
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-yellow-600/20">
-                  <UserPlus className="w-6 h-6 text-yellow-400" />
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-yellow-600/20 shrink-0">
+                  <UserPlus className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-400" />
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">New Users</p>
-                  <p className="text-3xl font-bold text-yellow-400">{newUsers.length}</p>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-xs sm:text-sm truncate">New Users</p>
+                  <p className="text-xl sm:text-3xl font-bold text-yellow-400">{newUsers.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -850,7 +852,46 @@ export default function AdminPage() {
                   No resellers yet — click "Create Reseller" to add one.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                  {/* Mobile card list — visible on small screens */}
+                  <div className="md:hidden space-y-3">
+                    {resellers.map((r) => (
+                      <div key={r.id} className="rounded-lg border border-gray-800 bg-gray-800/20 p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-white font-medium truncate">{r.name || "—"}</span>
+                          <Badge className="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 shrink-0">
+                            <Coins className="w-3 h-3 mr-1" />
+                            {r.credits ?? 0}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-gray-400 text-sm min-w-0">
+                          <span className="truncate">{r.username}</span>
+                          {r.user_type === "sub_reseller" && (
+                            <Badge variant="outline" className="border-fuchsia-700 text-fuchsia-400 shrink-0 text-[10px] px-1.5 py-0">
+                              Sub of {resellerNameById.get(r.created_by ?? "") || "reseller"}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-sm pl-0 pt-1 border-t border-gray-800">
+                          <span className="text-gray-300">{r.whatsapp_number || "No number"}</span>
+                          <span className="text-gray-500 text-xs">
+                            {r.created_at ? new Date(r.created_at).toLocaleDateString("en-ZA") : "—"}
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-green-700 text-green-400 hover:bg-green-900/20 w-full sm:w-auto"
+                          onClick={() => { setGrantTarget(r); setGrantForm({ amount: "", note: "" }); setGrantError(""); }}
+                        >
+                          <Coins className="w-4 h-4 mr-1" />
+                          Grant Credits
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop table — hidden on small screens */}
+                  <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-gray-800 hover:bg-transparent">
@@ -865,7 +906,16 @@ export default function AdminPage() {
                     <TableBody>
                       {resellers.map((r) => (
                         <TableRow key={r.id} className="border-gray-800">
-                          <TableCell className="text-white font-medium">{r.name || "—"}</TableCell>
+                          <TableCell className="text-white font-medium">
+                            <div className="flex flex-col items-start gap-1">
+                              <span>{r.name || "—"}</span>
+                              {r.user_type === "sub_reseller" && (
+                                <Badge variant="outline" className="border-fuchsia-700 text-fuchsia-400 w-fit">
+                                  Sub of {resellerNameById.get(r.created_by ?? "") || "reseller"}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-gray-300">{r.username}</TableCell>
                           <TableCell className="text-gray-300">{r.whatsapp_number || "—"}</TableCell>
                           <TableCell>
@@ -892,7 +942,8 @@ export default function AdminPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -915,11 +966,11 @@ export default function AdminPage() {
         {view === "users" && (showTable || search.trim().length > 0) && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-white">
                 {statusFilter === "all" ? "All Users" : statusFilter === "active" ? "Active Users" : statusFilter === "new" ? "New Users" : "Expired Users"}
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {statusFilter === "new" && (
                   <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
                     {([1, 2, 3, 7] as const).map((d) => (
@@ -948,12 +999,12 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             {!loading && filteredUsers.length > 0 && (
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {selectedUserIds.size > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-red-700 text-red-400 hover:bg-red-900/20"
+                    className="border-red-700 text-red-400 hover:bg-red-900/20 flex-1 sm:flex-auto"
                     onClick={() => setDeleteTarget({ type: "selected" })}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
@@ -963,7 +1014,7 @@ export default function AdminPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-red-900 text-red-500 hover:bg-red-900/20"
+                  className="border-red-900 text-red-500 hover:bg-red-900/20 flex-1 sm:flex-auto"
                   onClick={() => setDeleteTarget({ type: "all" })}
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
@@ -1253,7 +1304,7 @@ export default function AdminPage() {
         )}
         {/* Create User Dialog */}
         <Dialog open={createUserOpen} onOpenChange={(open) => { if (!open && !createUserLoading) { setCreateUserOpen(false); setCreateUserError(""); } }}>
-          <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-2xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-2xl h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col">
             <DialogHeader className="shrink-0">
               <DialogTitle className="text-white flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-blue-400" />

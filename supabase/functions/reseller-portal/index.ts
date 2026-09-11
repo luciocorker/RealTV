@@ -64,7 +64,7 @@ serve(async (req) => {
       if (!row || row.password !== password) {
         throw new Error("Invalid email or password");
       }
-      if (row.user_type !== "reseller") {
+      if (row.user_type !== "reseller" && row.user_type !== "sub_reseller") {
         throw new Error("This account is not a reseller account");
       }
       return row;
@@ -81,6 +81,7 @@ serve(async (req) => {
           username: r.username,
           whatsapp_number: r.whatsapp_number,
           credits: r.credits,
+          user_type: r.user_type,
         },
       });
     }
@@ -141,6 +142,102 @@ serve(async (req) => {
         success: true,
         newExpirationDate: row?.new_expiration ?? null,
         credits: row?.credits_left ?? reseller.credits,
+      });
+    }
+
+    // ---- CREATE SUB-RESELLER: full resellers mint sub accounts (parents only) ----
+    if (action === "create_sub") {
+      const parent = await verifyReseller();
+      if (parent.user_type !== "reseller") {
+        return json({ error: "Only resellers can create sub-resellers" }, 403);
+      }
+      const name = String(body?.name ?? "").trim();
+      const email = String(body?.email ?? "").trim().toLowerCase();
+      const whatsapp = String(body?.whatsapp ?? "").trim();
+      const password = String(body?.password ?? "");
+      if (!name || !email || !whatsapp || !password) {
+        return json({ error: "Name, email, WhatsApp number and password are required" }, 400);
+      }
+
+      const { data: existing } = await supabase
+        .from("users")
+        .select("id")
+        .eq("username", email)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        return json({ error: "A user with this email already exists" }, 400);
+      }
+
+      // Sub-resellers are portal logins like resellers — far-future expiry
+      // keeps them out of the "expired" filters.
+      const farFuture = new Date("2099-01-01T00:00:00Z").toISOString();
+
+      const { data: created, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          username: email,
+          password,
+          name,
+          whatsapp_number: whatsapp,
+          user_type: "sub_reseller",
+          credits: 0,
+          expiration_date: farFuture,
+          created_by: parent.id,
+        })
+        .select("id, username, name, whatsapp_number, credits")
+        .single();
+      if (insertError) {
+        return json({ error: "Failed to create sub-reseller: " + insertError.message }, 500);
+      }
+
+      return json({ success: true, subReseller: created });
+    }
+
+    // ---- LIST SUB-RESELLERS owned by this reseller (parents only) ----
+    if (action === "list_subs") {
+      const parent = await verifyReseller();
+      if (parent.user_type !== "reseller") {
+        return json({ error: "Only resellers can view sub-resellers" }, 403);
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, username, name, whatsapp_number, credits, created_at")
+        .eq("user_type", "sub_reseller")
+        .eq("created_by", parent.id)
+        .order("created_at", { ascending: true });
+      if (error) throw new Error("Database error: " + error.message);
+
+      return json({ success: true, subs: data ?? [] });
+    }
+
+    // ---- TRANSFER CREDITS from this reseller to one of their sub-resellers ----
+    if (action === "transfer_credits") {
+      const parent = await verifyReseller();
+      if (parent.user_type !== "reseller") {
+        return json({ error: "Only resellers can send credits" }, 403);
+      }
+      const subId = String(body?.subId ?? "");
+      const amount = Number(body?.amount);
+      const note = String(body?.note ?? "").trim() || null;
+      if (!subId) return json({ error: "Sub-reseller is required" }, 400);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return json({ error: "Enter a positive number of credits" }, 400);
+      }
+
+      const { data, error } = await supabase.rpc("transfer_reseller_credits", {
+        p_from_reseller_id: parent.id,
+        p_to_sub_reseller_id: subId,
+        p_amount: Math.round(amount),
+        p_reason: note,
+      });
+      if (error) return json({ error: error.message }, 400);
+
+      const row = Array.isArray(data) ? data[0] : data;
+      return json({
+        success: true,
+        senderCredits: row?.sender_balance ?? null,
+        receiverCredits: row?.receiver_balance ?? null,
       });
     }
 

@@ -18,7 +18,10 @@ import {
   Phone,
   RefreshCw,
   Search,
+  Send,
   Store,
+  UserPlus,
+  Users,
   Wallet,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppButton";
@@ -77,6 +80,7 @@ interface ResellerSession {
   whatsapp_number: string;
   credits: number;
   password: string;
+  user_type: "reseller" | "sub_reseller";
 }
 
 interface Customer {
@@ -84,6 +88,15 @@ interface Customer {
   username: string;
   expiration_date: string | null;
   user_type: string;
+}
+
+interface SubReseller {
+  id: string;
+  username: string;
+  name: string;
+  whatsapp_number: string;
+  credits: number;
+  created_at: string;
 }
 
 export default function ResellerPage() {
@@ -105,6 +118,17 @@ export default function ResellerPage() {
   const [selectedPlan, setSelectedPlan] = useState<ResellerPlan | null>(null);
   const [extending, setExtending] = useState(false);
   const [selectedTopUp, setSelectedTopUp] = useState<TopUpPackage | null>(null);
+
+  // Sub-reseller management (full resellers only)
+  const [subs, setSubs] = useState<SubReseller[]>([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [showCreateSub, setShowCreateSub] = useState(false);
+  const [createSubForm, setCreateSubForm] = useState({ name: "", email: "", whatsapp: "", password: "" });
+  const [creatingSub, setCreatingSub] = useState(false);
+  const [transferAmounts, setTransferAmounts] = useState<Record<string, string>>({});
+  const [transferringSubId, setTransferringSubId] = useState<string | null>(null);
+
+  const isSub = session?.user_type === "sub_reseller";
 
   useEffect(() => {
     try {
@@ -176,6 +200,7 @@ export default function ResellerPage() {
       const updated: ResellerSession = { ...session, credits: data.reseller.credits, name: data.reseller.name };
       setSession(updated);
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+      if (updated.user_type === "reseller") fetchSubs();
       toast({ title: `Balance: ${updated.credits} credits` });
     } catch (err) {
       // Credentials can no longer be verified — force a fresh sign-in
@@ -252,6 +277,79 @@ export default function ResellerPage() {
       title: "Opening WhatsApp...",
       description: "Send the pre-filled message to complete your top up.",
     });
+  };
+
+  // ----- Sub-resellers (parents only) -----
+  const fetchSubs = async () => {
+    if (!session || session.user_type !== "reseller") return;
+    setSubsLoading(true);
+    try {
+      const data = await callPortal({ action: "list_subs" });
+      setSubs(data.subs ?? []);
+    } catch {
+      // The sub list is a convenience feature — never block the dashboard
+    }
+    setSubsLoading(false);
+  };
+
+  useEffect(() => {
+    if (session?.user_type === "reseller") {
+      fetchSubs();
+    } else {
+      setSubs([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+
+  const handleCreateSub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingSub(true);
+    try {
+      await callPortal({ action: "create_sub", ...createSubForm });
+      setCreateSubForm({ name: "", email: "", whatsapp: "", password: "" });
+      setShowCreateSub(false);
+      await fetchSubs();
+      toast({
+        title: "Sub-reseller created",
+        description: "They sign in on this page with the email and password you set.",
+      });
+    } catch (err) {
+      toast({
+        title: "Could not create sub-reseller",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+    setCreatingSub(false);
+  };
+
+  const handleTransfer = async (sub: SubReseller) => {
+    if (!session) return;
+    const amount = Math.round(Number(transferAmounts[sub.id]));
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (session.credits < amount) return;
+    setTransferringSubId(sub.id);
+    try {
+      const data = await callPortal({ action: "transfer_credits", subId: sub.id, amount });
+      const newSessionCredits = data.senderCredits ?? session.credits - amount;
+      const newSubCredits = data.receiverCredits ?? sub.credits + amount;
+      const updated: ResellerSession = { ...session, credits: newSessionCredits };
+      setSession(updated);
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+      setTransferAmounts((m) => ({ ...m, [sub.id]: "" }));
+      setSubs((list) => list.map((s) => s.id === sub.id ? { ...s, credits: newSubCredits } : s));
+      toast({
+        title: `Sent ${amount} credit${amount === 1 ? "" : "s"}`,
+        description: `${sub.name || sub.username} now has ${newSubCredits} credits.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Transfer failed",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+    setTransferringSubId(null);
   };
 
   // ----- Login screen -----
@@ -340,10 +438,17 @@ export default function ResellerPage() {
                 <p className="text-[11px] uppercase tracking-widest text-purple-400 font-semibold">Reseller Portal</p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <h2 className="text-xl font-bold text-white truncate">{session.name || "Reseller"}</h2>
-                  <Badge className="bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30">
-                    <Store className="w-3 h-3 mr-1" />
-                    Reseller
-                  </Badge>
+                  {isSub ? (
+                    <Badge className="bg-amber-600/20 text-amber-300 border border-amber-500/30 hover:bg-amber-600/30">
+                      <UserPlus className="w-3 h-3 mr-1" />
+                      Sub-Reseller
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30">
+                      <Store className="w-3 h-3 mr-1" />
+                      Reseller
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 mt-1.5 flex-wrap">
                   <span className="flex items-center gap-1.5 text-sm text-gray-400 min-w-0">
@@ -386,8 +491,20 @@ export default function ResellerPage() {
               </div>
             </div>
 
-            {/* Top up */}
-            <div className="border-t border-white/10 pt-6 space-y-4">
+            {/* Top up — full resellers only; sub-resellers are topped up by their parent */}
+            {isSub ? (
+              <div className="border-t border-white/10 pt-6">
+                <p className="text-white font-semibold flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-amber-400" />
+                  Top Up Credits
+                </p>
+                <p className="text-gray-400 text-sm mt-2">
+                  Top-ups are not available on sub-reseller accounts. Your parent reseller can send you credits from
+                  their own balance — ask them to top up your account.
+                </p>
+              </div>
+            ) : (
+              <div className="border-t border-white/10 pt-6 space-y-4">
               <p className="text-white font-semibold flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-amber-400" />
                 Top Up Credits
@@ -432,9 +549,156 @@ export default function ResellerPage() {
               <p className="text-gray-500 text-xs">
                 Opens WhatsApp with your request pre-filled — just hit send and we'll add your credits once payment is received.
               </p>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            )}
+            </CardContent>
+          </Card>
+
+        {/* Sub-resellers — full resellers only */}
+        {session.user_type === "reseller" && (
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-fuchsia-400" />
+                  Sub-Resellers
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant={showCreateSub ? "outline" : "default"}
+                  className={showCreateSub ? "border-gray-700 text-gray-300" : "bg-fuchsia-600 hover:bg-fuchsia-700 text-white"}
+                  onClick={() => setShowCreateSub((v) => !v)}
+                >
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  {showCreateSub ? "Cancel" : "Create Sub-Reseller"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-500 text-sm">
+                Sub-resellers sign in on this page and can only extend customer subscriptions — spending the credits
+                you send them. Top-ups stay with you.
+              </p>
+              {showCreateSub && (
+                <form onSubmit={handleCreateSub} className="space-y-3 rounded-lg border border-gray-800 p-3 sm:p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="sub-name">Full Name</Label>
+                      <Input
+                        id="sub-name"
+                        value={createSubForm.name}
+                        onChange={(e) => setCreateSubForm((f) => ({ ...f, name: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="sub-email">Email (their login)</Label>
+                      <Input
+                        id="sub-email"
+                        type="email"
+                        value={createSubForm.email}
+                        onChange={(e) => setCreateSubForm((f) => ({ ...f, email: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="sub-whatsapp">WhatsApp Number</Label>
+                      <Input
+                        id="sub-whatsapp"
+                        value={createSubForm.whatsapp}
+                        onChange={(e) => setCreateSubForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="sub-password">Password</Label>
+                      <Input
+                        id="sub-password"
+                        value={createSubForm.password}
+                        onChange={(e) => setCreateSubForm((f) => ({ ...f, password: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white" disabled={creatingSub}>
+                    {creatingSub ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</>
+                    ) : (
+                      <><UserPlus className="w-4 h-4 mr-2" />Create Sub-Reseller</>
+                    )}
+                  </Button>
+                </form>
+              )}
+              {subsLoading ? (
+                <p className="text-gray-400 text-sm flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading sub-resellers...
+                </p>
+              ) : subs.length === 0 ? (
+                <p className="text-gray-500 text-sm py-2">
+                  No sub-resellers yet — create one to start delegating extensions.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {subs.map((sub) => {
+                    const amount = Math.round(Number(transferAmounts[sub.id]));
+                    const hasInput = (transferAmounts[sub.id] ?? "").trim() !== "";
+                    const valid = Number.isFinite(amount) && amount > 0 && (session.credits ?? 0) >= amount;
+                    return (
+                      <div key={sub.id} className="rounded-lg border border-gray-800 p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="min-w-0">
+                            <p className="text-white font-medium truncate">{sub.name || sub.username}</p>
+                            <p className="text-gray-500 text-xs truncate">{sub.username}</p>
+                          </div>
+                          <Badge className="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 shrink-0">
+                            <Coins className="w-3 h-3 mr-1" />
+                            {sub.credits ?? 0} credits
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            inputMode="numeric"
+                            placeholder="Credits to send"
+                            value={transferAmounts[sub.id] ?? ""}
+                            onChange={(e) => setTransferAmounts((m) => ({ ...m, [sub.id]: e.target.value }))}
+                            className="bg-gray-800 border-gray-700 text-white"
+                            disabled={transferringSubId !== null}
+                          />
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                            disabled={!valid || transferringSubId !== null}
+                            onClick={() => handleTransfer(sub)}
+                          >
+                            {transferringSubId === sub.id ? (
+                              <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Sending...</>
+                            ) : (
+                              <><Send className="w-4 h-4 mr-1" />Send</>
+                            )}
+                          </Button>
+                        </div>
+                        {hasInput && !valid && (
+                          <p className="text-red-400 text-xs">
+                            {(session.credits ?? 0) < amount
+                              ? "Not enough credits in your balance"
+                              : "Enter a positive credit amount"}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Extend account */}
         <Card className="bg-gray-900 border-gray-800">
