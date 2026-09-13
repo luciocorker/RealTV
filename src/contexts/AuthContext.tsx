@@ -13,8 +13,6 @@ export interface UserProfile {
   expiration_date: string;
   user_type: string;
   line_id?: number;
-  line_username?: string;
-  line_password?: string;
 }
 
 interface AuthContextType {
@@ -27,7 +25,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const USER_SELECT = "id, username, name, whatsapp_number, expiration_date, user_type, line_id, line_username, line_password";
+const USER_SELECT = "id, username, name, whatsapp_number, expiration_date, user_type, line_id";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -160,30 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Profile setup failed" };
     }
     const profileData = updatedRows[0];
-
-    // Create trial line based on account type
-    try {
-      const isPremium = fields.account_type === "premium";
-      const lineEndpoint = isPremium ? "create-line-b2b" : "create-line";
-      const lineResponse = await fetch(`${SUPABASE_URL}/functions/v1/${lineEndpoint}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          username: fields.username,
-        }),
-      });
-      const lineData = await lineResponse.json();
-      if (lineData.success) {
-        profileData.line_id = lineData.line_id;
-        profileData.line_username = lineData.line_username;
-        profileData.line_password = lineData.line_password;
-        if (lineData.expire_at) {
-          profileData.expiration_date = lineData.expire_at;
-        }
-      }
-    } catch (lineErr) {
-      console.error("Failed to create line:", lineErr);
-    }
 
     setUser(profileData);
     isRegistering.current = false;
